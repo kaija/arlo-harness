@@ -25,6 +25,7 @@ pnpm dev
 pnpm typecheck
 pnpm lint
 pnpm build
+pnpm --filter @arlo/desktop package
 ```
 
 ## Structure
