@@ -1,0 +1,12 @@
+packages:
+  - apps/*
+  - packages/*
+
+allowBuilds:
+  electron: true
+  esbuild: true
+  lefthook: true
+
+onlyBuiltDependencies:
+  - electron
+  - esbuild
