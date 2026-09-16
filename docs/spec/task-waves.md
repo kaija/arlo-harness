@@ -1,0 +1,101 @@
+# ADR 實作任務與 Waves
+
+建立日期：2026-09-16。依據 [ADR 索引](README.md) 與 ADR-0001～0014。
+
+這是開發工作的相依排程，不是 ADR-0005 所排除的產品內 DAG planner；不修改既有 Accepted 決策。Task 編號為本文件新建，並非原 ADR 已有的編號。
+
+## 結論：哪些可以先做？
+
+**不必等正式 UI，就能完成 Phase 1 的核心執行閉環，並先開發 Phase 2 的排程／事件／通知服務，以及 Phase 3 的語音後端。**
+
+- **N：純 Node 可開發與驗收**：契約、Persona schema、A2A、Provider adapter、Skills／MCP、Session／排隊、派發、HITL 狀態機、trace 處理。Electron 介面用測試替身；最終跨行程整合仍需 E 類任務。
+- **E：需要 Electron，但不需要正式產品 UI**：SQLite main service、safeStorage、utilityProcess、隱藏 BrowserWindow／WebContentsView、CDP、Toast、語音後端、打包。以空白 renderer、測試入口與本機測試頁驗收。
+- **U：需要 renderer／使用者互動才能完整驗收**：聊天與設定面板、Action Center 回答操作、人工登入／captcha、麥克風／WebRTC、視窗切換體驗。
+
+「沒有 UI」在本計畫指沒有正式 React 產品畫面。若連 Electron 或隱藏視窗都不允許執行，只能先驗收 N 類，不能宣稱瀏覽器／行程／safeStorage 已完成。
+
+## 現況與使用方式
+
+根 README 將目前專案描述為最小 Electron scaffold，五個 packages 為 placeholder；`docs/handoff-scaffold.md` 是先前骨架需求，不是完成紀錄。本次以文件規格拆解 backlog，**未逐項稽核程式實作，也未將 scaffold 存在視為功能已完成**。T01 先確認可沿用部分，其餘任務均待驗收。
+
+同一 wave 的任務沒有彼此的必要前置，可平行安排；不同任務仍可能編輯同一 package，應事先分配檔案。表格列的是直接前置，間接前置由依賴鏈繼承。Waves 採保守批次排序；個別任務的前置完成後即可提早開始，不必等待無關支線。每個 task 應連同其必要測試交付，T25 是跨模組驗收，不是把測試延到最後。
+
+## Waves 快查
+
+```text
+wave1:  [T01]
+wave2:  [T02, T03]
+wave3:  [T04, T05, T06, T07, T08]
+wave4:  [T09, T10, T11, T12, T13]
+wave5:  [T14, T15, T16, T17]
+wave6:  [T18, T19, T20]
+wave7:  [T21, T22, T23, T24, T25]
+wave8:  [T26, T27, T28]
+wave9:  [T29, T30]
+wave10: [T31]
+```
+
+- **Wave 1–6：優先投入**。建立不依賴正式 UI 的核心；Wave 6 完成瀏覽器工具、派發與審批串接。
+- **Wave 7：分支選擇點**。T25 驗收 Phase 1 無 UI 閉環；T21–T24 是可提前做的 Phase 2／3 服務，並非 Phase 1 的必要前置。
+- **Wave 8–10：產品 UI 與交付**。T26、T27 不必等 Phase 2／3；若有 UI 人力，契約與其前置完成即可提早開工。T28 是仍可在沒有正式 UI 時完成的外部通知服務。
+
+## 任務簡述表
+
+ADR 欄以四位數對應 `adr/` 中同號文件。P1／P2／P3 沿用 ADR 的交付階段；階段是產品範圍，不等於技術上最早可開工的時間。
+
+| Task | 任務與交付範圍 | ADR | 階段／環境 | 直接前置 | 完成驗收重點 |
+|---|---|---|---|---|---|
+| T01 | 確認 scaffold、package 邊界與建置入口，補缺漏 | 0001、0014 | P1／E | — | main／preload／renderer／agent-host 可建置；packages 不依賴 Electron；列出既有實作與缺口 |
+| T02 | 共用資料契約：IPC、A2A envelope、事件、InterruptPayload、風險等級 | 0002、0004、0010、0011、0012 | P1／N | T01 | 可序列化且有執行期驗證；分離 Agent 與 renderer API；renderer 無讀取 secret 方法；鎖定風險預設值 |
+| T03 | 測試與 CI 基線：Vitest、FakeModel、lint／typecheck、打包 smoke | 0014 | P1／E | T01 | FakeModel 可驅動 tool call；三平台 build／原生模組打包檢查及 macOS 空視窗 e2e；維持 packages 覆蓋率目標 80% |
+| T04 | Persona／Provider 設定 schema、SKILL.md 解析與 Agent Card 產生 | 0003、0008、0009 | P1／N | T02、T03 | 全域／局部 binding、maxConcurrency 預設、skills 索引、MCP ref、非法設定皆可測 |
+| T05 | A2A client／server／broker 完整傳輸 | 0004 | P1／N | T02、T03 | Node MessageChannel 驗證 send、stream、resubscribe、cancel、串流結束及錯誤清理；拒絕 Persona 直連 Persona；registry 更新 |
+| T06 | main SQLite、migration、db RPC 與 state 事件 | 0011 | P1／E | T02、T03 | WAL、核心資料表／索引與重啟持久化；Agent 僅經 RPC 存取；run_states、delegations、notifications 先納入，P2 表可後續 migration |
+| T07 | Provider adapter 與 Agent runner 基礎 | 0003、0014 | P1／N | T02、T03 | 三種 Provider 的建構設定與 streaming adapter；FakeModel 驗證工具／事件流；相容端點走 Chat Completions；不以 mock 宣稱真端點相容性 |
+| T08 | Electron 視窗／browser host 基礎 | 0006、0007 | P1／E | T02、T03 | 延遲建立空白 Persona 視窗、hide 不銷毀、WebContentsView／partition／targetId 管理；loopback CDP、關閉背景節流 |
+| T09 | secrets 與 Provider 設定服務 | 0003、0011 | P1／E | T04、T06、T07 | safeStorage 加密，無加密能力拒存；僅 main 解密；局部覆寫／全域繼承；金鑰經 Port 注入、下一 Run 套用設定 |
+| T10 | Session／TaskStore 與 Thread 排隊引擎 | 0004、0009、0011 | P1／N | T04、T05、T06、T07 | IpcSession／IpcTaskStore；context 隔離、FIFO、submitted→working、並行上限、當前 Thread 介入、取消；最近 N 則＋系統摘要策略 |
+| T11 | Workspace、Skills 與 MCP 載入 | 0008 | P1／N | T04、T07 | 漸進 load_skill、esbuild 轉譯 tools.ts、getWorkdir／延遲 getPage 介面、檔案／shell 工具；每 Persona 獨立 MCP；監看更新於下一 Run 生效；未確認外部 skill 不執行 |
+| T12 | 最小事件／通知服務 | 0002、0010、0012 | P1 基礎／E | T06 | 持久通知、已讀／待處理狀態、actions 資料與查詢；Task／崩潰／HITL 事件入口；Toast 等級與關閉設定；不含完整 Action Center 畫面 |
+| T13 | 本機 tracing、事件查詢與保留策略 | 0011 | P1／N | T06、T07 | 自訂 TracingProcessor／IpcTraceExporter，替換預設 OpenAI exporter；stream 狀態可訂閱；OTLP 可選；trace／messages 90 天、通知 30 天可配置 |
+| T14 | Agent process manager 與啟動組裝 | 0002、0004、0008、0011 | P1／E | T05、T09、T10、T11、T12、T13 | 全部已啟用 Persona 與 Orchestrator 常駐；Port 註冊／設定推送；崩潰 Task failed，1／5／30 秒最多重啟三次、歷史還原；停用先 cancel 最多等 10 秒；MCP 清理 |
+| T15 | Playwright 瀏覽器工具與 Run tab 配置 | 0006、0009 | P1／E | T07、T08、T10、T11 | 實作 ADR 全套 browser 工具、snapshot/ref、getPage；本機頁驗證跨 Persona session 隔離／重啟保留；每 Run 獨立 tab，共用 Persona cookies；刪除清理與 powerSaveBlocker |
+| T16 | Orchestrator 委派與狀態聚合 | 0005、0009 | P1／N | T05、T07、T10、T11、T12 | delegate_to_* 動態更新、sync／async、30 分鐘可覆寫逾時、get／cancel／list；delegations 持久化；async 終態注入 Orchestrator 使用者 Thread 並續跑 |
+| T17 | HITL 狀態機、權限與中斷儲存 | 0010 | P1／N | T07、T09、T10、T12 | low 自動；medium 可代答、直接使用者 Thread 則找人；high／auth／captcha 強制人工；RunState 保存恢復、拒絕／24 小時取消；tool_error 為重試或 failed，不掛起等待 |
+| T18 | Agent＋瀏覽器實際跨行程接線 | 0002、0006、0007、0008 | P1／E | T14、T15 | utilityProcess 首次工具呼叫才建立 browser host；正確交付 targetId；隱藏／切換視窗不中斷；兩 Persona 並行及 getPage skill 實測 |
+| T19 | 派發＋HITL 完整恢復流程 | 0005、0010 | P1／E | T14、T16、T17 | ask_orchestrator、escalate_to_user、同 taskId 回答／續跑；驗證回答者權限、雙 Thread 審批紀錄；真 utilityProcess 重啟後還原中斷 |
+| T20 | renderer 白名單 API 與狀態訂閱 | 0007、0009、0010、0011 | P1／E | T08、T09、T10、T12、T13、T14、T16、T17 | 建立／停用／刪除 Persona、送訊息、派發／取消、回答、設定與狀態 snapshot／訂閱；隔離 renderer 權限；提供 UI 可用的契約及 fixtures |
+| T21 | Cron 排程與模板引擎 | 0012 | P2／E | T14、T16 | croner 5／6 欄＋時區、全部模板變數、未知變數警告；schedule_runs、獨立／延續 Thread、立即執行；關機錯過記 skipped 不補跑 |
+| T22 | 事件觸發與 inbound webhook | 0012 | P2／E | T14、T16 | triggers.events、payload 模板、來源 filter、鏈深度上限 5；loopback receiver、Bearer token 加密、webhook→Persona；用本機請求驗收 |
+| T23 | 通知規則／Agent notify 服務 | 0012 | P2／E | T14、T16、T17 | notify 工具、系統事件通知、action_required 置頂與處理狀態、Toast 偏好；避免同一系統事件重複建立通知 |
+| T24 | 語音後端：STT 與 ephemeral secret | 0013 | P3／E | T09、T10、T20 | Provider 能力判斷、檔案轉錄／大小限制與可選 ffmpeg 分段；短效 key 每次新取；voice metadata；用替身驗證路由，不需麥克風 UI |
+| T25 | 無正式 UI 的 Phase 1 整合驗收 | 0002～0011、0014 | P1／E | T18、T19、T20 | FakeModel＋真 Electron＋本機頁：派發→排隊→browser tool→中斷→測試身份回答→續跑→落庫；另驗證 crash／cancel／重啟與背景執行 |
+| T26 | 正式主視窗／Persona／設定 UI | 0001、0003、0007～0009、0011 | P1／U | T18、T20 | Chat、Thread、任務樹、Provider／Persona 設定、trace、tabs／導航、Agent 資源狀態與活動縮圖；首次外部 skill 確認、並行警告、視窗 show／focus／hide 與背景行為 |
+| T27 | 人工 HITL 與 Action Center 核心 UI | 0007、0010、0012 | P1／U | T19、T20 | 人工回答／approve／reject／繼續、待辦徽章、跳到對應 Persona Thread；登入／captcha 在瀏覽器人工完成；驗證使用者實際恢復路徑 |
+| T28 | Outbound webhook 與推播範本 | 0012 | P2／E | T23 | severity／source／type 篩選、URL／headers／body 模板、ntfy／Telegram 範本；退避重試三次，最終失敗通知不再轉發；用本機接收器驗收 |
+| T29 | 排程／事件／通知管理 UI | 0012 | P2／U | T21、T22、T26、T27、T28 | 排程 CRUD／暫停／立即執行／歷史；webhook port／token 操作與轉發規則；完整 Action Center 設定與操作 |
+| T30 | 語音 renderer 與麥克風體驗 | 0013 | P3／U | T24、T26 | 檔案選擇／文字回填、確認／直接送出；Realtime WebRTC transcription-only、PTT／VAD、能力開關與麥克風權限；正式 key 不進 renderer |
+| T31 | 完整產品 e2e、發佈與更新流程 | 0014 | P1～P3／U | T25、T26、T27、T29、T30 | 三平台產物與原生依賴、macOS 功能 e2e；changesets／release workflow／更新通知與自願重啟；語音權限宣告；簽章憑證可後加，實際發佈另行操作 |
+
+## 優先順序與里程碑
+
+1. **現在開始：T01 → T02／T03。** 先把契約與測試入口做好，UI 和核心才可分開發展。
+2. **先得到文字 Agent 閉環：T04–T07 → T09–T14 → T16／T17 → T19。** 不必等待 browser 工具或正式 renderer。用 FakeModel 與測試端注入使用者輸入即可證明派發、排隊、審批與恢復。
+3. **再加瀏覽器：T08 → T15 → T18。** 這支線需要 Electron 與 Chromium，卻不需要聊天版面；T25 將兩條支線一起驗收。
+4. **Phase 1 產品完成：T25＋T26＋T27，以及 T31 的 Phase 1 發佈驗收部分。** 不以 Phase 2／3 阻擋 Phase 1；T31 表中的全依赖代表三階段皆交付時的最終驗收。
+5. **UI 尚未開始時繼續投入：T21／T22／T23／T24 → T28。** 這些服務可用 API／測試入口操作，待 T29／T30 補上產品互動。
+
+不建議只按 ADR 號碼逐份完成：例如 0002 崩潰恢復先需要 0011 持久化；0005 派發需要 0009 Session／排隊；0010 HITL 需要 0012 的最小通知資料服務。此處因此將同一 ADR 拆成可獨立交付的 tasks。
+
+## 開工前需釐清的接縫
+
+以下是實作時的驗證／契約工作，不阻止其他獨立任務開工，也不在本文件擅自改 ADR：
+
+- **T02／T05：broker 的服務呼叫權限。** ADR-0004 的星型 Agent 路由政策，需與 ADR-0011 的 `db/*`、以及排程／手動來源呼叫區分；不能讓 renderer 藉泛用 envelope 偽裝 Orchestrator。
+- **T04／T16：schema 補齊。** ADR-0005 提到可在 yaml 覆寫委派逾時，但 ADR-0008 範例未命名該欄位；應定義欄位與預設並記錄。
+- **T08／T18：CDP 相容性。** 以實際安裝的 Electron／Playwright 驗證 endpoint 綁定、origin 限制、targetId 對應與多 partition；mock 測試不足以證明此通道可用。
+- **T11／T26：外部 skill 初次確認。** 無 UI 階段以內建 fixture 或明確的測試授權驗收；正式流程保留首次確認，不以「尚無 UI」繞過。
+- **T17／T19：RunState 真正的可恢復範圍。** 以已安裝 SDK 驗證工具審批、question 與 auth/captcha 暫停如何序列化及重啟恢復；若與 ADR 假設不符，另提決策修訂。
+- **T25：人工驗證的界線。** 測試身份回答可以證明協定與狀態機；不能取代 T27 的真實登入／captcha 操作，也不能把尚未授權的人工作業自動批准。
+
+本文件僅建立開發 backlog，沒有建立 Codex 新 tasks、排程、自動執行或修改產品功能。

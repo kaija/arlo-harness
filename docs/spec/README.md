@@ -48,6 +48,10 @@
 | [0013](adr/0013-voice-input.md) | 語音：Renderer 以 ephemeral key 直連 Realtime（WebRTC）；檔案 STT 走 transcription API | 3 |
 | [0014](adr/0014-testing-ci-packaging.md) | Vitest + FakeModel + Playwright Electron e2e；GitHub Actions；electron-builder + electron-updater | 1 |
 
+## 實作任務排程
+
+[ADR Tasks Waves 與任務簡述表](task-waves.md)：依前置依賴拆解 31 個任務，區分純 Node、最小 Electron 容器與正式 UI，提供 UI 完成前可先構建的順序。此為實作計畫，不變更 Accepted ADR。
+
 ## 交付階段
 
 | 階段 | 範圍 | 對應規格 |
