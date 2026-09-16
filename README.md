@@ -24,14 +24,19 @@ pnpm dev
 ```sh
 pnpm typecheck
 pnpm lint
+pnpm test
 pnpm build
 pnpm --filter @arlo/desktop package
+pnpm --filter @arlo/desktop test:e2e   # after build; launches Electron
 ```
+
+`make ci` runs the same steps as CI. After changing `apps/desktop/src/main/db/schema.ts`, run
+`pnpm --filter @arlo/desktop db:generate` and commit the generated migration.
 
 ## Structure
 
 ```text
-apps/desktop/                 Electron main, preload, and React renderer
+apps/desktop/                 Electron main (incl. SQLite in src/main/db), preload, React renderer
 packages/shared/              Cross-process contracts
 packages/persona-schema/      persona.yaml, global settings, SKILL.md, Agent Cards
 packages/a2a-transport/       A2A JSON-RPC over MessagePort, broker

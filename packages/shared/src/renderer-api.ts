@@ -95,6 +95,12 @@ export const rendererEventContract = {
       path: ['interrupt'],
       message: 'interrupt is required for, and only allowed with, state "input-required".',
     }),
+  // A Thread's history changed; the panel re-reads it and re-sorts by activity (ADR-0009 §4).
+  'state/thread': z.strictObject({
+    agentId: agentIdSchema,
+    contextId: opaqueIdSchema,
+    updatedAt: isoDateTimeSchema,
+  }),
 } as const satisfies Readonly<Record<string, z.ZodType>>;
 
 export type RendererEventChannel = keyof typeof rendererEventContract;

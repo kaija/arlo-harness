@@ -6,5 +6,12 @@
     "declaration": false,
     "declarationMap": false
   },
-  "include": ["src", "e2e", "electron.vite.config.ts", "playwright.config.ts"]
+  "include": [
+    "src",
+    "test",
+    "e2e",
+    "electron.vite.config.ts",
+    "playwright.config.ts",
+    "drizzle.config.ts"
+  ]
 }

@@ -108,6 +108,11 @@ export const rendererEventFixtures: Record<RendererEventChannel, unknown> = {
     interrupt: { type: 'auth_required', site: 'github.com', reason: 'login' },
     updatedAt: now,
   },
+  'state/thread': {
+    agentId: 'persona:research-analyst',
+    contextId: 'user:research-analyst',
+    updatedAt: now,
+  },
 };
 
 const eventBase = { id: 'evt-1', occurredAt: now, chainDepth: 0 };

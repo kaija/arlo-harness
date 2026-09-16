@@ -97,7 +97,11 @@ describe('agent and renderer APIs are separate surfaces', () => {
       'tasks/cancel',
       'windows/showPersona',
     ]);
-    expect(sortedKeys(rendererEventContract)).toEqual(['state/agentStatus', 'state/task']);
+    expect(sortedKeys(rendererEventContract)).toEqual([
+      'state/agentStatus',
+      'state/task',
+      'state/thread',
+    ]);
   });
 
   it('shares no method names between the two contracts', () => {
