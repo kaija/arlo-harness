@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   a2aEnvelopeSchema,
+  agentEndpointUrl,
+  agentIdFromEndpointUrl,
   isEnvelopeFromPort,
   isTerminalTaskState,
   TASK_STATES,
@@ -169,6 +171,18 @@ describe('A2A envelope', () => {
     expect(isEnvelopeFromPort('orchestrator', request)).toBe(true);
     expect(isEnvelopeFromPort('persona:research-analyst', request)).toBe(false);
     expect(isEnvelopeFromPort('orchestrator', { ...request, from: 'system:user' })).toBe(false);
+  });
+
+  it('names Agents in Agent Card URLs and only accepts valid Agents back', () => {
+    expect(agentEndpointUrl('persona:research-analyst')).toBe(
+      'arlo://agents/persona:research-analyst',
+    );
+    expect(agentIdFromEndpointUrl(agentEndpointUrl('orchestrator'))).toBe('orchestrator');
+    expect(agentIdFromEndpointUrl('arlo://agents/system:user')).toBeUndefined();
+    expect(agentIdFromEndpointUrl('arlo://agents/persona:../x')).toBeUndefined();
+    expect(
+      agentIdFromEndpointUrl('https://agent.example/persona:research-analyst'),
+    ).toBeUndefined();
   });
 });
 

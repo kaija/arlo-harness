@@ -32,13 +32,15 @@ pnpm --filter @arlo/desktop package
 
 ```text
 apps/desktop/                 Electron main, preload, and React renderer
-packages/shared/              Shared cross-process types (placeholder)
-packages/persona-schema/      Persona and Skill schemas (placeholder)
+packages/shared/              Cross-process contracts
+packages/persona-schema/      persona.yaml, global settings, SKILL.md, Agent Cards
 packages/a2a-transport/       A2A MessagePort transport (placeholder)
 packages/agent-runtime/       Agent runtime integration (placeholder)
 packages/browser-tools/       Browser automation tools (placeholder)
-docs/spec/                    Accepted architecture decisions
+docs/spec/                    Accepted architecture decisions and task waves
 ```
+
+Implementation progress is tracked in [docs/spec/task-waves.md](docs/spec/task-waves.md).
 
 TypeScript is temporarily pinned to 6.0.3 because the current stable typescript-eslint release
 does not yet support TypeScript 7. Vite and its React plugin are pinned to the newest compatible

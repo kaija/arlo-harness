@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { agentIdSchema, type AgentId } from './ids.js';
+import { agentIdSchema, isAgentId, type AgentId } from './ids.js';
 import { jsonRpcRequestSchema, jsonRpcResponseSchema } from './jsonrpc.js';
 
 /**
@@ -52,6 +52,24 @@ export const a2aEnvelopeSchema = z.discriminatedUnion('kind', [
   }),
 ]);
 export type A2AEnvelope = z.infer<typeof a2aEnvelopeSchema>;
+
+/**
+ * Agent Cards must list a `supportedInterfaces[].url`, but Agents have no HTTP
+ * address: requests travel over MessagePorts (ADR-0004 §2). This URL only
+ * names the target Agent so the transport can route a request to it.
+ */
+export const AGENT_ENDPOINT_URL_PREFIX = 'arlo://agents/';
+
+export function agentEndpointUrl(agentId: AgentId): string {
+  return `${AGENT_ENDPOINT_URL_PREFIX}${agentId}`;
+}
+
+/** Returns the Agent named by {@link agentEndpointUrl}, or `undefined` for any other URL. */
+export function agentIdFromEndpointUrl(url: string): AgentId | undefined {
+  if (!url.startsWith(AGENT_ENDPOINT_URL_PREFIX)) return undefined;
+  const agentId = url.slice(AGENT_ENDPOINT_URL_PREFIX.length);
+  return isAgentId(agentId) ? agentId : undefined;
+}
 
 /**
  * An Agent port may only speak for its own Agent. The broker checks this

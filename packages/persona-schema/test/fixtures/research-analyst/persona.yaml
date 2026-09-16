@@ -1,0 +1,24 @@
+id: research-analyst
+name: Research Analyst
+description: 網路資料蒐集與摘要
+prompt: |
+  你是一位研究分析師，負責蒐集資料並撰寫摘要。
+modelBinding: { providerId: openai-main, model: gpt-5-mini }
+skills: [web-research, report-writer]
+mcpServers:
+  - ref: github
+  - name: local-fs
+    transport: stdio
+    command: npx
+    args: ['-y', '@modelcontextprotocol/server-filesystem', './workdir']
+tools:
+  builtin: [browser, filesystem, shell]
+  riskLevels:
+    shell_exec: high
+    browser_evaluate: high
+    github.create_issue: high
+browser: { enabled: true }
+maxConcurrency: 1
+alwaysOn: true
+triggers:
+  events: []
