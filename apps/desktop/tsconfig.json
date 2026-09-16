@@ -6,5 +6,5 @@
     "declaration": false,
     "declarationMap": false
   },
-  "include": ["src", "electron.vite.config.ts"]
+  "include": ["src", "e2e", "electron.vite.config.ts", "playwright.config.ts"]
 }

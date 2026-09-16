@@ -99,3 +99,12 @@ ADR 欄以四位數對應 `adr/` 中同號文件。P1／P2／P3 沿用 ADR 的�
 - **T25：人工驗證的界線。** 測試身份回答可以證明協定與狀態機；不能取代 T27 的真實登入／captcha 操作，也不能把尚未授權的人工作業自動批准。
 
 本文件僅建立開發 backlog，沒有建立 Codex 新 tasks、排程、自動執行或修改產品功能。
+
+## 進度追蹤
+
+| Task | 狀態 | 已完成 | 缺口（延後至後續 task） |
+|---|---|---|---|
+| T01 | 完成 | 新增 `apps/desktop/src/agent-host/`（utilityProcess 入口，載入 `@arlo/agent-runtime`）並接進 `electron.vite.config.ts`；main／preload／renderer／agent-host 皆可經 `pnpm --filter @arlo/desktop build` 建置；`packages/*` 仍為純 Node，不依賴 `electron` | Orchestrator／MessagePort handshake、Provider 金鑰注入等真正邏輯留給 T14；agent-host 目前只回報 `ready` |
+| T03 | 完成 | 根目錄新增 Vitest + `@vitest/coverage-v8`（`vitest.config.ts`，80% 門檻）；`packages/agent-runtime/testing` 提供 `FakeModel`／`runFakeAgentLoop`（可腳本化 text／tool_call 並驅動假工具）及對應單元測試；`apps/desktop` 新增 Playwright `_electron` 冒煙測試（啟動 App、驗證視窗內容）；CI 新增 `pnpm test` 與僅 macOS 執行的 `pnpm --filter @arlo/desktop test:e2e` 步驟 | 尚無 `better-sqlite3` 等原生模組，因此「原生模組打包檢查」要等 T06 導入 SQLite 後才能驗證；80% 覆蓋率門檻目前只涵蓋已有測試的檔案（`coverage.all: false`），隨每個 task 落地程式碼需一併補測試以維持門檻 |
+
+以上兩項已可視為 wave1／wave2 的一部分完成；T02（共用資料契約）仍待開工。

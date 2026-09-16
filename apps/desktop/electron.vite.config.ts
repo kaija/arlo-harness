@@ -7,7 +7,10 @@ export default defineConfig({
     build: {
       rollupOptions: {
         external: ['electron'],
-        input: resolve(import.meta.dirname, 'src/main/index.ts'),
+        input: {
+          index: resolve(import.meta.dirname, 'src/main/index.ts'),
+          'agent-host/index': resolve(import.meta.dirname, 'src/agent-host/index.ts'),
+        },
       },
     },
   },

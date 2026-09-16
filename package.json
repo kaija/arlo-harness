@@ -13,15 +13,19 @@
     "typecheck": "pnpm -r --if-present typecheck",
     "lint": "eslint .",
     "format": "prettier --write .",
+    "test": "vitest run --coverage",
+    "test:watch": "vitest",
     "prepare": "lefthook install"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
     "@types/node": "26.5.1",
+    "@vitest/coverage-v8": "5.0.1",
     "eslint": "10.10.0",
     "lefthook": "2.1.14",
     "prettier": "3.9.6",
     "typescript": "6.0.3",
-    "typescript-eslint": "8.70.0"
+    "typescript-eslint": "8.70.0",
+    "vitest": "5.0.1"
   }
 }
