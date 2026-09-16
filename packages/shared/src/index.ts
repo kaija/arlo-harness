@@ -8,4 +8,5 @@ export * from './json.js';
 export * from './jsonrpc.js';
 export * from './provider.js';
 export * from './renderer-api.js';
+export * from './run-events.js';
 export * from './tool-risk.js';

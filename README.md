@@ -40,7 +40,7 @@ apps/desktop/                 Electron main (incl. SQLite in src/main/db), prelo
 packages/shared/              Cross-process contracts
 packages/persona-schema/      persona.yaml, global settings, SKILL.md, Agent Cards
 packages/a2a-transport/       A2A JSON-RPC over MessagePort, broker
-packages/agent-runtime/       Agent runtime integration (placeholder)
+packages/agent-runtime/       Model providers, Agent runner, FakeModel
 packages/browser-tools/       Browser automation tools (placeholder)
 docs/spec/                    Accepted architecture decisions and task waves
 ```

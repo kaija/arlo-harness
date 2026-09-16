@@ -7,5 +7,14 @@
     ".": "./src/index.ts",
     "./testing": "./testing/index.ts"
   },
-  "scripts": { "typecheck": "tsc --noEmit" }
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@arlo/shared": "workspace:*",
+    "@openai/agents-core": "0.18.0",
+    "@openai/agents-openai": "0.18.0",
+    "openai": "7.15.0",
+    "zod": "4.6.5"
+  }
 }
