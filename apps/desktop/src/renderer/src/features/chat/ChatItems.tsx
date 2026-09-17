@@ -149,7 +149,7 @@ export function PageThumbnail({ className }: { className?: string }) {
     <div
       aria-hidden
       className={cn(
-        'relative h-[60px] w-24 shrink-0 overflow-hidden rounded-[6px] border border-border-strong bg-gradient-to-b from-secondary to-[#eceaf4]',
+        'relative h-[60px] w-24 shrink-0 overflow-hidden rounded-[6px] border border-border-strong bg-gradient-to-b from-secondary to-muted',
         className,
       )}
     >

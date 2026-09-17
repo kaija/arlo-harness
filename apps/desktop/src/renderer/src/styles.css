@@ -133,6 +133,47 @@
   }
 }
 
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --color-background: #171722;
+  --color-foreground: #f4f4fb;
+  --color-card: #20202e;
+  --color-card-foreground: #f4f4fb;
+  --color-popover: #242432;
+  --color-popover-foreground: #f4f4fb;
+  --color-primary: #928fff;
+  --color-primary-hover: #aaa8ff;
+  --color-primary-foreground: #171722;
+  --color-primary-soft: rgb(146 143 255 / 0.16);
+  --color-primary-glow: rgb(146 143 255 / 0.28);
+  --color-secondary: #20202e;
+  --color-secondary-foreground: #f4f4fb;
+  --color-muted: #2b2b3c;
+  --color-muted-foreground: #b6b6cc;
+  --color-faint: #85859d;
+  --color-accent: #303044;
+  --color-accent-foreground: #f4f4fb;
+  --color-border: rgb(255 255 255 / 0.1);
+  --color-border-strong: rgb(255 255 255 / 0.16);
+  --color-input: rgb(255 255 255 / 0.14);
+  --color-ring: rgb(146 143 255 / 0.35);
+  --color-scrim: rgb(0 0 0 / 0.58);
+  --color-success: #4ecb94;
+  --color-success-soft: rgb(78 203 148 / 0.15);
+  --color-warning: #f0b54d;
+  --color-warning-soft: rgb(240 181 77 / 0.15);
+  --color-warning-tint: rgb(240 181 77 / 0.2);
+  --color-danger: #f07c91;
+  --color-danger-soft: rgb(240 124 145 / 0.15);
+  --color-danger-tint: rgb(240 124 145 / 0.2);
+  --color-destructive: #f07c91;
+  --color-skeleton: #38384c;
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.2);
+  --shadow-md: 0 4px 12px rgb(0 0 0 / 0.28);
+  --shadow-lg: 0 8px 32px rgb(0 0 0 / 0.35);
+  --shadow-xl: 0 16px 48px rgb(0 0 0 / 0.42);
+}
+
 /* Frameless title bars (macOS hiddenInset): the header drags the window, its controls do not. */
 @utility drag-region {
   -webkit-app-region: drag;
@@ -149,6 +190,7 @@
     height: 100%;
   }
   body {
+    color-scheme: light;
     font-family: var(--font-sans);
     font-size: var(--text-body);
     line-height: 1.6;
@@ -157,6 +199,9 @@
     overflow: hidden;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+  }
+  :root[data-theme='dark'] body {
+    color-scheme: dark;
   }
   button:not(:disabled),
   [role='button']:not([aria-disabled='true']) {
@@ -175,6 +220,9 @@
     border-radius: 999px;
     border: 2px solid transparent;
     background-clip: padding-box;
+  }
+  :root[data-theme='dark'] ::-webkit-scrollbar-thumb {
+    background: rgb(255 255 255 / 0.18);
   }
   ::-webkit-scrollbar-track {
     background: transparent;
