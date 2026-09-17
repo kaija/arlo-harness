@@ -95,7 +95,11 @@ export const rendererInvokeFixtures: Record<
     result: { secrets: [{ ref: 'openai-main', last4: '1234', updatedAt: now }] },
   },
   'secrets/delete': { params: { ref: 'openai-main' }, result: null },
-  'windows/showPersona': { params: { personaId: 'research-analyst' }, result: null },
+  'windows/showPersona': {
+    params: { personaId: 'research-analyst', contextId: 'orchestrator:ctx-1' },
+    result: null,
+  },
+  'windows/showMain': { params: { taskId: 'task-1' }, result: null },
 };
 
 export const rendererEventFixtures: Record<RendererEventChannel, unknown> = {

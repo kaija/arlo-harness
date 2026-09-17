@@ -64,9 +64,15 @@ export const rendererInvokeContract = {
     params: z.strictObject({ ref: secretRefSchema }),
     result: z.null(),
   },
-  // ADR-0007 §3: switching view is show() + focus() on the Persona window.
+  // ADR-0007 §3: switching view is show() + focus() on the Persona window,
+  // optionally opened on one Thread (a delegation card jumps to its Thread).
   'windows/showPersona': {
-    params: z.strictObject({ personaId: personaIdSchema }),
+    params: z.strictObject({ personaId: personaIdSchema, contextId: opaqueIdSchema.optional() }),
+    result: z.null(),
+  },
+  // Traceability back from a delegated Thread to the Orchestrator task that started it.
+  'windows/showMain': {
+    params: z.strictObject({ taskId: opaqueIdSchema.optional() }),
     result: z.null(),
   },
 } as const satisfies MethodContracts;

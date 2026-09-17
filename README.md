@@ -36,7 +36,7 @@ pnpm --filter @arlo/desktop test:e2e   # after build; launches Electron
 ## Structure
 
 ```text
-apps/desktop/                 Electron main (incl. SQLite in src/main/db), preload, React renderer
+apps/desktop/                 Electron main (SQLite in src/main/db, windows), preload, React renderer
 packages/shared/              Cross-process contracts
 packages/persona-schema/      persona.yaml, global settings, SKILL.md, Agent Cards
 packages/a2a-transport/       A2A JSON-RPC over MessagePort, broker
@@ -46,6 +46,18 @@ docs/spec/                    Accepted architecture decisions and task waves
 ```
 
 Implementation progress is tracked in [docs/spec/task-waves.md](docs/spec/task-waves.md).
+
+## Renderer UI
+
+The renderer implements the Claude Design "Agent Platform" mockups with Tailwind CSS 4, shadcn/ui-style
+components (`apps/desktop/src/renderer/src/components/ui`), Zustand and TanStack Router. Colors, type
+and radii come from the Arlo AI design system and are declared once in
+`apps/desktop/src/renderer/src/styles.css`.
+
+Until the renderer API (T20) streams real state, every window starts from the sample workspace in
+`src/renderer/src/state/fixtures.ts`. User actions are JSON commands (`state/commands.ts`) applied
+locally and mirrored to the other open windows; nothing is sent to an Agent yet. The routes are
+`#/main`, `#/persona/<id>`, their `/settings` sheets, and `#/welcome` (first run).
 
 TypeScript is temporarily pinned to 6.0.3 because the current stable typescript-eslint release
 does not yet support TypeScript 7. Vite and its React plugin are pinned to the newest compatible

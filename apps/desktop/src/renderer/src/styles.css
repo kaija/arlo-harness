@@ -1,39 +1,182 @@
-:root {
-  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
-  color: #e8f1f5;
-  background: #0b1118;
+@import 'tailwindcss';
+@import '@fontsource-variable/inter';
+
+/*
+ * Arlo AI design system tokens (tokens/colors.css, typography.css, effects.css)
+ * exposed through the shadcn/ui token names, so `bg-primary`, `text-muted-foreground`
+ * and `border-border` mean what they mean in any shadcn component. Arlo-only
+ * roles (faint text, status tints, the 8% / 15% accent tints) get their own names.
+ * Inter is bundled instead of loaded from Google Fonts: the app never calls out.
+ */
+@theme {
+  --font-sans: 'Inter Variable', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'SF Mono', 'Fira Code', 'JetBrains Mono', ui-monospace, monospace;
+
+  --color-background: #ffffff;
+  --color-foreground: #1a1a2e;
+  --color-card: #ffffff;
+  --color-card-foreground: #1a1a2e;
+  --color-popover: #ffffff;
+  --color-popover-foreground: #1a1a2e;
+  --color-primary: #5856d6;
+  --color-primary-hover: #4745b5;
+  --color-primary-foreground: #ffffff;
+  --color-primary-soft: rgb(88 86 214 / 0.08);
+  --color-primary-glow: rgb(88 86 214 / 0.15);
+  --color-secondary: #f8f8fc;
+  --color-secondary-foreground: #1a1a2e;
+  --color-muted: #f0f0f8;
+  --color-muted-foreground: #64648c;
+  --color-faint: #8e8eaa;
+  --color-accent: #f0f0f8;
+  --color-accent-foreground: #1a1a2e;
+  --color-border: rgb(0 0 0 / 0.06);
+  --color-border-strong: rgb(0 0 0 / 0.1);
+  --color-input: rgb(0 0 0 / 0.1);
+  --color-ring: rgb(88 86 214 / 0.15);
+  --color-scrim: rgb(26 26 46 / 0.4);
+  --color-success: #1f9d6b;
+  --color-success-soft: rgb(31 157 107 / 0.08);
+  --color-warning: #c07a12;
+  --color-warning-soft: rgb(192 122 18 / 0.08);
+  --color-warning-tint: rgb(192 122 18 / 0.12);
+  --color-danger: #d1435b;
+  --color-danger-soft: rgb(209 67 91 / 0.08);
+  --color-danger-tint: rgb(209 67 91 / 0.1);
+  --color-destructive: #d1435b;
+  --color-skeleton: #e4e4f2;
+
+  --radius-xs: 5px;
+  --radius-mark: 7px;
+  --radius-sm: 8px;
+  --radius-tile: 10px;
+  --radius-md: 12px;
+  --radius-bubble: 14px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.04);
+  --shadow-md: 0 4px 12px rgb(0 0 0 / 0.06);
+  --shadow-lg: 0 8px 32px rgb(0 0 0 / 0.08);
+  --shadow-xl: 0 16px 48px rgb(0 0 0 / 0.1);
+
+  /* Compact density: the product UI runs a notch below the marketing type scale. */
+  --text-nano: 9px;
+  --text-nano--line-height: 1.4;
+  --text-micro: 9.5px;
+  --text-micro--line-height: 1.45;
+  --text-tiny: 10px;
+  --text-tiny--line-height: 1.5;
+  --text-caption: 10.5px;
+  --text-caption--line-height: 1.55;
+  --text-label: 11px;
+  --text-label--line-height: 1.55;
+  --text-body-sm: 11.5px;
+  --text-body-sm--line-height: 1.55;
+  --text-body: 12px;
+  --text-body--line-height: 1.6;
+  --text-title: 13px;
+  --text-title--line-height: 1.45;
+
+  --animate-pulse-dot: pulse-dot 1.6s ease infinite;
+  --animate-sweep: sweep 1.8s linear infinite;
+  --animate-swap-in: swap-in 260ms ease;
+  --animate-bar-in: bar-in 250ms ease;
+  --animate-reveal: reveal-in 220ms ease;
+
+  @keyframes pulse-dot {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.35;
+    }
+  }
+  @keyframes sweep {
+    0% {
+      transform: translateX(-100%);
+    }
+    100% {
+      transform: translateX(320%);
+    }
+  }
+  @keyframes swap-in {
+    0% {
+      opacity: 0;
+      transform: translateY(7px);
+    }
+    100% {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  @keyframes bar-in {
+    0% {
+      transform: scaleY(0.2);
+      opacity: 0;
+    }
+    100% {
+      transform: scaleY(1);
+      opacity: 1;
+    }
+  }
+  @keyframes reveal-in {
+    0% {
+      opacity: 0;
+      transform: translateY(-4px);
+    }
+    100% {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
 }
 
-body {
-  margin: 0;
+/* Frameless title bars (macOS hiddenInset): the header drags the window, its controls do not. */
+@utility drag-region {
+  -webkit-app-region: drag;
+  user-select: none;
+}
+@utility no-drag {
+  -webkit-app-region: no-drag;
 }
 
-.shell {
-  min-height: 100vh;
-  display: grid;
-  place-content: center;
-  text-align: center;
-  background: radial-gradient(circle at 50% 20%, #173347, #0b1118 55%);
-}
-
-.badge {
-  width: 64px;
-  height: 64px;
-  margin: 0 auto 18px;
-  display: grid;
-  place-items: center;
-  border-radius: 18px;
-  color: #06231f;
-  background: #68dcc8;
-  font-weight: 900;
-  letter-spacing: 0.08em;
-}
-
-h1 {
-  margin: 0;
-  font-size: 32px;
-}
-
-p {
-  color: #8499a7;
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+  body {
+    font-family: var(--font-sans);
+    font-size: var(--text-body);
+    line-height: 1.6;
+    color: var(--color-foreground);
+    background: var(--color-background);
+    overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  button:not(:disabled),
+  [role='button']:not([aria-disabled='true']) {
+    cursor: pointer;
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-primary-glow);
+    outline-offset: 2px;
+  }
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: rgb(0 0 0 / 0.1);
+    border-radius: 999px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
 }

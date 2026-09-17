@@ -95,6 +95,7 @@ describe('agent and renderer APIs are separate surfaces', () => {
       'secrets/list',
       'secrets/set',
       'tasks/cancel',
+      'windows/showMain',
       'windows/showPersona',
     ]);
     expect(sortedKeys(rendererEventContract)).toEqual([
