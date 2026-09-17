@@ -11,6 +11,7 @@ import { WindowTitleBar } from '../../components/window-title-bar.js';
 import { showPersonaWindow } from '../../lib/bridge.js';
 import { useNow, useWindowWidth } from '../../lib/hooks.js';
 import { cn } from '../../lib/utils.js';
+import { useTranslation } from '../../i18n.js';
 import {
   agentIdOf,
   modelLabel,
@@ -41,6 +42,7 @@ const FULL_SIDEBAR_MIN = 860;
 export function MainWindow() {
   const data = useData();
   const dispatch = useDispatch();
+  const { t } = useTranslation();
   const now = useNow();
   const width = useWindowWidth();
   const search = route.useSearch();
@@ -144,17 +146,17 @@ export function MainWindow() {
                 <Icon name="chat" size={20} />
               </span>
               <div className="text-title font-semibold tracking-[-0.01em]">
-                Orchestrator 現在只能自己做事
+                {t('main.orchestratorAlone')}
               </div>
               <div className="text-label leading-[1.7] text-muted-foreground">
-                建立 Persona 之後，它就能把任務拆開派發，並在背景持續執行。
+                {t('main.orchestratorAloneDescription')}
               </div>
               <Button variant="primary" size="md" onClick={newPersona}>
-                建立第一個 Persona
+                {t('main.createFirstPersona')}
               </Button>
             </div>
           ) : (
-            <div className="m-auto text-caption text-faint">對 Orchestrator 下達第一個任務。</div>
+            <div className="m-auto text-caption text-faint">{t('main.firstTask')}</div>
           )
         }
       />
@@ -186,10 +188,10 @@ export function MainWindow() {
     <div className="flex h-full flex-col bg-background">
       <WindowTitleBar title="Arlo Harness">
         <span className="font-mono text-caption text-faint">local · 127.0.0.1</span>
-        <Tooltip content="Global settings" side="bottom">
+        <Tooltip content={t('main.globalSettings')} side="bottom">
           <button
             type="button"
-            aria-label="Global settings"
+            aria-label={t('main.globalSettings')}
             onClick={() => openGlobalSettings()}
             className="flex text-faint transition-colors duration-150 hover:text-foreground"
           >
@@ -223,21 +225,21 @@ export function MainWindow() {
                   onClick={() => select(ORCHESTRATOR_ID)}
                   className="shrink-0 rounded-full border border-border-strong px-2 py-[2px] text-tiny text-faint transition-colors duration-150 hover:border-primary-glow hover:text-primary"
                 >
-                  ← Orchestrator
+                  {t('main.backToOrchestrator')}
                 </button>
               ) : null}
             </div>
             <span className="h-[18px] w-px shrink-0 bg-border" />
             <Segmented
-              aria-label="Main panel"
+              aria-label={t('main.panel')}
               value={panel}
               size={width < 640 ? 'sm' : 'md'}
               onValueChange={(next) =>
                 void navigate({ search: (prev) => ({ ...prev, panel: next }), replace: true })
               }
               options={[
-                { value: 'chat', label: 'Chat' },
-                { value: 'tree', label: width < 640 ? 'Tree' : 'Task tree' },
+                { value: 'chat', label: t('main.chat') },
+                { value: 'tree', label: width < 640 ? t('main.tree') : t('main.taskTree') },
               ]}
             />
             <span className="flex-1" />
@@ -262,7 +264,9 @@ export function MainWindow() {
                     : 'border border-border-strong text-muted-foreground',
                 )}
               >
-                {pendingCount > 0 ? `${pendingCount} · needs you` : 'Action center'}
+                {pendingCount > 0
+                  ? `${pendingCount} · ${t('main.needsYou')}`
+                  : t('main.actionCenter')}
               </button>
             ) : null}
           </div>
@@ -271,7 +275,7 @@ export function MainWindow() {
 
           <Composer
             key={`${selectedId}:${search.draft ?? ''}`}
-            placeholder={`指派新任務給 ${selected.name}…`}
+            placeholder={t('main.assignTask', { name: selected.name })}
             initialText={search.draft ?? ''}
             variant={width < 640 ? 'compact' : 'full'}
             realtimeVoice={provider?.capabilities.realtimeVoice ?? false}
@@ -289,7 +293,7 @@ export function MainWindow() {
           <>
             <button
               type="button"
-              aria-label="Close action center"
+              aria-label={t('main.closeActionCenter')}
               className="absolute inset-0 z-20 bg-scrim/40"
               onClick={() => setDrawerOpen(false)}
             />

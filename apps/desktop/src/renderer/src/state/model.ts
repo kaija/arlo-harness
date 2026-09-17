@@ -8,6 +8,9 @@ import type { AgentId, InterruptPayload, RiskLevel } from '@arlo/shared';
 
 export type AgentActivity = 'idle' | 'working' | 'waiting' | 'error' | 'offline';
 
+/** UI language. Keep this in the shared renderer state so every app window agrees. */
+export type AppLocale = 'en' | 'zh-TW' | 'ja';
+
 export interface ModelBinding {
   providerId: string;
   model: string;
@@ -310,6 +313,8 @@ export interface GlobalDefaults {
 }
 
 export interface PlatformState {
+  /** Interface language selected in Global settings. */
+  locale: AppLocale;
   agents: Record<string, Agent>;
   /** Orchestrator first, then Personas in list order. */
   agentOrder: AgentId[];

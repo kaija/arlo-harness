@@ -497,6 +497,7 @@ export function createFixtureState(now: number = Date.now()): PlatformState {
   };
 
   return {
+    locale: 'zh-TW',
     agents: {
       [ORCHESTRATOR]: {
         id: ORCHESTRATOR,

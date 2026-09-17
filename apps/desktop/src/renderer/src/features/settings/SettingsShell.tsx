@@ -6,6 +6,7 @@ import {
   DialogDescription,
   DialogTitle,
 } from '../../components/ui/dialog.js';
+import { useTranslation } from '../../i18n.js';
 
 /** Settings open as a large sheet over whichever window asked for them. */
 export function SettingsShell({
@@ -19,6 +20,7 @@ export function SettingsShell({
   onClose: () => void;
   children: ReactNode;
 }) {
+  const { t } = useTranslation();
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="flex h-[min(740px,calc(100vh-48px))] w-[min(1000px,calc(100vw-32px))] flex-col">
@@ -30,7 +32,7 @@ export function SettingsShell({
           <span className="flex-1" />
           <button
             type="button"
-            aria-label="Close settings"
+            aria-label={t('settings.close')}
             onClick={onClose}
             className="flex text-faint hover:text-foreground"
           >

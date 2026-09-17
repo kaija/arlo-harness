@@ -35,6 +35,22 @@ test('launches the main window with agents, chat and action center', async () =>
   }
 });
 
+test('switches the interface language from Global settings', async () => {
+  const { app, cleanup } = await launch();
+  try {
+    const main = await app.firstWindow();
+    await main.getByRole('button', { name: '全域設定' }).click();
+    await main.getByRole('button', { name: '進階', exact: true }).click();
+    await main.getByLabel('介面語言').selectOption('ja');
+
+    await expect(main.getByText('グローバル設定', { exact: true })).toBeVisible();
+    await expect(main.getByRole('button', { name: '詳細', exact: true })).toBeVisible();
+    await expect(main.locator('html')).toHaveAttribute('lang', 'ja');
+  } finally {
+    await cleanup();
+  }
+});
+
 test('opens a Persona window, hides it on close, and mirrors answers across windows', async () => {
   const { app, cleanup } = await launch();
   try {
@@ -95,7 +111,7 @@ test('a delegated Thread links back to its Orchestrator task without reloading t
       'true',
     );
     await persona.getByRole('button', { name: '回到來源任務 ↑' }).click();
-    await expect(main.getByRole('radio', { name: 'Task tree' })).toHaveAttribute(
+    await expect(main.getByRole('radio', { name: '任務樹' })).toHaveAttribute(
       'aria-checked',
       'true',
     );

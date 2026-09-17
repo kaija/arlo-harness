@@ -1,6 +1,7 @@
 import type { AgentId, InterruptAnswer, RiskLevel } from '@arlo/shared';
 import type {
   Agent,
+  AppLocale,
   ChatItem,
   ForwardRule,
   InterruptResolution,
@@ -59,6 +60,7 @@ export type Command =
   | { type: 'schedule/runNow'; scheduleId: string }
   | { type: 'rule/setEnabled'; ruleId: string; enabled: boolean }
   | { type: 'settings/toast'; enabled: boolean; minSeverity: Severity }
+  | { type: 'settings/setLocale'; locale: AppLocale }
   | { type: 'settings/orchestratorPrompt'; prompt: string }
   | { type: 'onboarding/complete' };
 
@@ -588,6 +590,8 @@ export function applyCommand(state: PlatformState, command: Command, now: number
           toastMinSeverity: command.minSeverity,
         },
       };
+    case 'settings/setLocale':
+      return { ...state, locale: command.locale };
     case 'settings/orchestratorPrompt':
       return { ...state, orchestratorPrompt: command.prompt };
     case 'onboarding/complete':

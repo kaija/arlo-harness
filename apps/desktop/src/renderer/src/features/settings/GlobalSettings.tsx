@@ -14,6 +14,7 @@ import { Switch } from '../../components/ui/switch.js';
 import { formatClock, renderTemplate } from '../../lib/format.js';
 import { useNow } from '../../lib/hooks.js';
 import { cn } from '../../lib/utils.js';
+import { LOCALES, useLocaleSelection, useTranslation } from '../../i18n.js';
 import type { PersonaPatch } from '../../state/commands.js';
 import type { PlatformState, Provider, ProviderType, Severity } from '../../state/model.js';
 import { testProviderConnection } from '../../state/provider-test.js';
@@ -22,12 +23,12 @@ import { useData, useDispatch } from '../../state/store.js';
 import { SettingsShell } from './SettingsShell.js';
 
 const SECTIONS = [
-  { id: 'providers', label: 'Model providers' },
-  { id: 'orchestrator', label: 'Orchestrator' },
-  { id: 'mcp', label: 'MCP templates' },
-  { id: 'schedules', label: 'Schedules' },
-  { id: 'notifications', label: 'Notifications' },
-  { id: 'advanced', label: 'Advanced' },
+  { id: 'providers', labelKey: 'settings.providers' },
+  { id: 'orchestrator', labelKey: 'settings.orchestrator' },
+  { id: 'mcp', labelKey: 'settings.mcp' },
+  { id: 'schedules', labelKey: 'settings.schedules' },
+  { id: 'notifications', labelKey: 'settings.notifications' },
+  { id: 'advanced', labelKey: 'settings.advanced' },
 ] as const;
 
 type SectionId = (typeof SECTIONS)[number]['id'];
@@ -42,6 +43,7 @@ export function GlobalSettingsDialog() {
   const search = useSearch({ strict: false });
   const navigate = useNavigate();
   const data = useData();
+  const { t } = useTranslation();
   const initial = SECTIONS.some((s) => s.id === search.tab)
     ? (search.tab as SectionId)
     : 'providers';
@@ -51,13 +53,13 @@ export function GlobalSettingsDialog() {
 
   return (
     <SettingsShell
-      title="Global settings"
-      description="Providers, schedules, notifications and advanced settings"
+      title={t('settings.title')}
+      description={t('settings.description')}
       onClose={close}
     >
       <div className="flex min-h-0 flex-1">
         <nav
-          aria-label="Settings sections"
+          aria-label={t('settings.sections')}
           className="flex w-[186px] shrink-0 flex-col gap-[3px] border-r border-border bg-secondary px-[9px] py-3"
         >
           {SECTIONS.map((s) => (
@@ -73,7 +75,7 @@ export function GlobalSettingsDialog() {
                   : 'font-medium text-muted-foreground hover:text-foreground',
               )}
             >
-              {s.label}
+              {t(s.labelKey)}
             </button>
           ))}
           <span className="flex-1" />
@@ -764,6 +766,8 @@ function NotificationsSection({ data }: { data: PlatformState }) {
 
 function AdvancedSection({ data }: { data: PlatformState }) {
   const advanced = data.advanced;
+  const { locale, t } = useTranslation();
+  const setLocale = useLocaleSelection();
   const row = (label: string, value: string) => (
     <div className="flex items-center gap-3 border-b border-border py-2 last:border-b-0">
       <span className="flex-1 text-caption text-muted-foreground">{label}</span>
@@ -772,36 +776,50 @@ function AdvancedSection({ data }: { data: PlatformState }) {
   );
   return (
     <div className="flex max-w-[640px] flex-col gap-3">
-      <Title>Advanced</Title>
-      <SettingsCard title="Trace 匯出">
+      <Title>{t('settings.advancedTitle')}</Title>
+      <SettingsCard title={t('settings.language')}>
+        <Field label={t('settings.interfaceLanguage')} hint={t('settings.languageDescription')}>
+          <NativeSelect
+            value={locale}
+            onChange={(event) => setLocale(event.target.value as typeof locale)}
+          >
+            {LOCALES.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </NativeSelect>
+        </Field>
+      </SettingsCard>
+      <SettingsCard title={t('settings.traceExport')}>
         <label className="flex items-center gap-3">
-          <Switch checked={advanced.otlpEnabled} disabled aria-label="Export traces to OTLP" />
-          <span className="text-body-sm">匯出到 OTLP endpoint</span>
+          <Switch checked={advanced.otlpEnabled} disabled aria-label={t('settings.exportToOtlp')} />
+          <span className="text-body-sm">{t('settings.exportToOtlp')}</span>
         </label>
         <Field label="Endpoint">
           <Input readOnly value={advanced.otlpEndpoint} className="font-mono" />
         </Field>
       </SettingsCard>
-      <SettingsCard title="資料保留">
+      <SettingsCard title={t('settings.retention')}>
         <div>
-          {row('Trace 與訊息', `${advanced.traceRetentionDays} 天`)}
-          {row('通知', `${advanced.notificationRetentionDays} 天`)}
+          {row(t('settings.traceAndMessages'), `${advanced.traceRetentionDays} 天`)}
+          {row(t('settings.notificationsLabel'), `${advanced.notificationRetentionDays} 天`)}
         </div>
       </SettingsCard>
-      <SettingsCard title="本機服務">
+      <SettingsCard title={t('settings.localServices')}>
         <div>
           {row('CDP port（僅 127.0.0.1）', String(advanced.cdpPort))}
           {row('Webhook port（僅 127.0.0.1）', String(advanced.webhookPort))}
-          {row('資料庫', advanced.databasePath)}
+          {row(t('settings.database'), advanced.databasePath)}
         </div>
       </SettingsCard>
-      <SettingsCard title="應用程式更新">
+      <SettingsCard title={t('settings.appUpdates')}>
         <div className="flex items-center gap-3">
           <span className="flex-1 text-caption text-muted-foreground">
-            目前版本 v{advanced.version}
+            {t('settings.currentVersion')} v{advanced.version}
           </span>
           <Button variant="outline" size="sm" disabled title="自動更新在發佈流程（T31）完成後啟用">
-            Check for updates
+            {t('settings.checkUpdates')}
           </Button>
         </div>
       </SettingsCard>

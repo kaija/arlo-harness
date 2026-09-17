@@ -64,6 +64,11 @@ describe('fixture state', () => {
     }
     for (const n of state.notifications) expect(state.agents[n.agentId]).toBeDefined();
   });
+
+  it('keeps the selected interface language in the state shared by every window', () => {
+    const state = run(fresh(), { type: 'settings/setLocale', locale: 'ja' });
+    expect(state.locale).toBe('ja');
+  });
 });
 
 describe('interrupt answers', () => {
