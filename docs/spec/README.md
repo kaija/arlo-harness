@@ -126,6 +126,8 @@
 
 ## 實作任務排程
 
+Agent 關係與處理流程的文字圖見 [docs/DESIGN.md](../DESIGN.md)。
+
 [ADR Tasks Waves 與任務簡述表](task-waves.md)：依前置依賴拆解任務，區分純 Node、最小 Electron 容器與正式 UI。2026-09-25 修訂新增的隱私任務與既有任務的改名重工列在該文件的「2026-09-25 架構修訂」一節。
 
 ## 規格對照
