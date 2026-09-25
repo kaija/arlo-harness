@@ -2,6 +2,7 @@
 
 - 狀態：Accepted
 - 日期：2026-09-15
+- 修訂：2026-09-25：雲端語音轉錄受隱私預設等級限制（整理時補上，未經盤問，待確認）
 - 適用階段：Phase 3
 
 ## 背景
@@ -10,14 +11,21 @@
 
 ## 決策
 
-1. **語音是輸入法，不是獨立 Agent**。語音轉出的文字送進目標 Agent（Orchestrator 或某個 Persona）目前 Thread 的輸入框，由使用者確認後送出，或在「免手動確認」模式下直接送出。工具執行仍由文字 Agent 在 utilityProcess 內完成。
+1. **語音是輸入法，不是獨立 Agent**。語音轉出的文字送進目標 Agent（Privacy Agent 或某個 Operator）目前 Thread 的輸入框，由使用者確認後送出，或在「免手動確認」模式下直接送出。工具執行仍由文字 Agent 在 utilityProcess 內完成。
 2. **即時串流**：
    - Renderer 使用 `@openai/agents-realtime` 的 `RealtimeSession` + `OpenAIRealtimeWebRTC`，直接從麥克風連 OpenAI Realtime API，只啟用 transcription（`RealtimeAgent` 不掛工具）。
    - 金鑰不進 renderer：main 以 API key 向 `/v1/realtime/client_secrets` 換 **ephemeral client secret**，經 IPC 給 renderer；secret 有效期短且每次連線重新申請。
    - 啟用條件：目標 Agent 的 Provider `capabilities.realtime === true`（v1 即 `apiType === 'openai'`）。否則 UI 隱藏串流按鈕，只留檔案上傳。
    - 也提供對講機模式（push-to-talk）與 VAD 自動分段兩種。
 3. **檔案上傳 STT**：renderer 選檔 → 經 IPC 把檔案路徑給 main → main 以 Provider 的 `audio/transcriptions` API（`gpt-4o-transcribe` 或 `whisper-1`，可設）轉錄 → 文字回填輸入框。OpenAI 與 Azure OpenAI 都支援；OpenAI 相容端點若有 `capabilities.transcription` 亦可。檔案大小上限依 API（25 MB），超過時 main 以 ffmpeg（可選依賴）切段。
-4. 轉錄結果附 `source: 'voice'` 標記存入訊息 metadata，面板顯示麥克風圖示。
+4. **隱私**：原始音訊無法經 Gate 別名化，送往 `cloud` 的 STT／Realtime 就等於把原始語音交給該 Provider。
+   - 轉錄 Provider 依 trustZone 區分。優先建議本地 STT：`openai_compatible` 且 `capabilities.transcription` 的端點，例如 whisper.cpp server、LM Studio。
+   - 預設等級「嚴格」：停用雲端 STT 與 Realtime。
+   - 「平衡」：第一次使用雲端語音時說明風險，取得一次性同意並寫入 Ledger。
+   - 「寬鬆」：直接可用。
+   - Realtime 與 STT 改用設定頁指定的「語音 Provider」，不再依目標 Agent 的 Provider 判斷，因為入口的 Privacy Agent 通常是本地模型。第 2 點的啟用條件改為看語音 Provider 的 `capabilities.realtime`。
+   轉錄出的文字進入 Privacy Agent 後，照一般流程處理。
+5. 轉錄結果附 `source: 'voice'` 標記存入訊息 metadata，面板顯示麥克風圖示。
 
 ## 考慮過的替代方案
 

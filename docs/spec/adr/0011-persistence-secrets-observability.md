@@ -2,6 +2,7 @@
 
 - 狀態：Accepted
 - 日期：2026-09-15
+- 修訂：2026-09-25：新增 `privacy_vault`、`privacy_ledger`、`sandbox_runs`；OTLP 外送受 trustZone 限制
 - 適用階段：Phase 1
 
 ## 背景
@@ -14,13 +15,15 @@
 
 1. **main 持有單一 SQLite**（`better-sqlite3`，WAL 模式），路徑 `<userData>/arlo.db`。Migration 以 `drizzle-orm` + `drizzle-kit` 管理。
 2. **Agent 行程不碰 DB**。agent-runtime 的 `IpcSession`、`IpcTaskStore`、`IpcTraceExporter` 都透過 MessagePort 對 main 發 `db/*` 請求；main 落庫後把變更以 `state/*` 事件廣播給相關 renderer。
-3. 主要資料表：`personas`（yaml 快取與狀態）、`provider_profiles`、`secrets`、`threads`、`messages`、`run_states`、`a2a_tasks`、`delegations`、`schedules`、`schedule_runs`、`notifications`、`trace_spans`、`events`。
+3. 主要資料表：`personas`（yaml 快取與狀態）、`provider_profiles`、`secrets`、`threads`、`messages`、`run_states`、`a2a_tasks`、`delegations`、`schedules`、`schedule_runs`、`notifications`、`trace_spans`、`events`、`privacy_vault`、`privacy_ledger`、`sandbox_runs`。
+   - `messages`、`run_states`、`trace_spans` 保存**本機真值**：別名化只發生在送往雲端的請求上（[ADR-0015](0015-privacy-gate-aliasing-and-vault.md)）。
+   - `privacy_vault` 以 `(scope_id, alias)` 為鍵，值以 `safeStorage` 加密；`privacy_ledger` 保存別名化後的外送內容與授權事件（[ADR-0016](0016-privacy-policy-ledger-and-transparency.md)）；`sandbox_runs` 保存腳本全文、後端、資源用量與結果摘要（[ADR-0017](0017-compute-to-data-and-script-sandbox.md)）。
 4. persona.yaml 與 skills 以檔案系統為真相來源（[ADR-0008](0008-persona-workspace-and-skills.md)），DB 只存快取與執行狀態。
 
 ### 機密
 
 5. API Key 以 Electron `safeStorage.encryptString()` 加密後存 `secrets` 表；只在 main 解密。
-6. Agent 行程需要的 key 由 main 在 spawn 與設定變更時以 MessagePort 訊息注入（不用 env，避免 `ps` / crash dump 洩漏）。
+6. Agent 行程需要的 key（含 Gate 偵測器綁定的 key）由 main 在 spawn 與設定變更時以 MessagePort 訊息注入（不用 env，避免 `ps` / crash dump 洩漏）。
 7. Renderer 永遠拿不到明文；UI 只顯示尾碼 4 碼。IPC 契約中不存在「讀取 secret」的方法。
 8. `safeStorage.isEncryptionAvailable()` 為 false（Linux 無 keyring）時拒絕儲存 key 並提示，不 fallback 到明文。
 
@@ -28,8 +31,8 @@
 
 9. agent-runtime 註冊自訂 `TracingProcessor`，把 span（agent、generation、function、MCP、guardrail）送回 main 寫 `trace_spans`；`setTracingDisabled(false)` 但移除預設的 OpenAI exporter，預設**不上傳** OpenAI。
 10. Run streaming 事件（`raw_model_stream_event`、`run_item_stream_event`、`agent_updated_stream_event`）即時經 main 推到面板，面板顯示訊息、可展開的 reasoning（Provider 有回傳時）、工具呼叫輸入 / 輸出、耗時、token 用量。
-11. 提供 OTLP exporter 開關（設定頁），開啟後同時把 span 送到使用者指定的 OTLP endpoint（Jaeger、Langfuse 等）。
-12. 保留策略：`trace_spans` 與 `messages` 預設保留 90 天，設定可調；`notifications` 保留 30 天。
+11. 提供 OTLP exporter 開關（設定頁），開啟後同時把 span 送到使用者指定的 OTLP endpoint（Jaeger、Langfuse 等）。OTLP endpoint 也依 [ADR-0015](0015-privacy-gate-aliasing-and-vault.md) 的規則推導 trustZone：`local`／`private` 送完整 span；`cloud` 只送時間、名稱、狀態、token 用量等 metadata，移除所有內容屬性（輸入、輸出、工具參數）。
+12. 保留策略：`trace_spans`、`messages`、`privacy_vault`、`privacy_ledger`、`sandbox_runs` 預設保留 90 天，設定可調；`notifications` 保留 30 天。沙箱 run 目錄在 run 結束 24 小時後刪除。
 
 ## 考慮過的替代方案
 

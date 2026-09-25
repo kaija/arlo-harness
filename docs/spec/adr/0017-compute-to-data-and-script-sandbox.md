@@ -1,0 +1,88 @@
+# ADR-0017：Compute-to-data 與腳本沙箱
+
+- 狀態：Accepted
+- 日期：2026-09-25
+- 適用階段：Phase 1
+
+## 背景
+
+結構化或大量的使用者資料（報表、帳務、名單、log）不適合逐值別名化後整份送上雲：量太大，而且每一列都是個資。改為「資料不動、程式移動」：只把 schema 交給雲端 Operator，由它寫處理腳本，Privacy 端在本機沙箱中對真實資料執行，結果再回給使用者。
+
+威脅模型（[ADR-0015](0015-privacy-gate-aliasing-and-vault.md)）把「Operator 產生的惡意或錯誤腳本」列在範圍內：腳本可能連網外傳、刪檔，或把原始資料印出後流回雲端。
+
+## 決策
+
+### 何時使用
+
+1. 觸發依**資料型態與政策類別**：
+   - 附件或引用的資料為 CSV、TSV、XLSX、JSON、JSONL、SQLite、log，或文字超過設定的列數門檻（預設 200 列）時，屬於 `dataset` 類別；
+   - 政策為 `schema_only` 的類別強制走此路徑（[ADR-0016](0016-privacy-policy-ledger-and-transparency.md)）；
+   - 非結構化短文字走別名化。
+   SLM Flow 以此規則決定；LLM Flow 以此為預設，可自行判斷改走其他 route，選擇寫入 Ledger。
+
+### Schema 交付
+
+2. Schema 由 `packages/privacy/dataset` 以**確定性解析器**在本機抽取，不經 LLM：
+   - 檔名（別名化）、欄位名（經 Gate，敏感欄位名同樣別名化）、推斷型別；
+   - 空值比例、值的格式樣式（例如 `A123456789` 描述為「1 大寫字母 + 9 位數字」）；
+   - 列數，以級距表示（`1k–10k`）；
+   - 本地生成的**合成樣本列**：格式相符的假值，不含任何真實值。
+3. 描述物件（`DatasetDescriptor`）送出前仍經過 Gate，作為第二道防線。
+
+### 腳本提交與執行
+
+4. Operator 或 Planner 以工具 `submit_compute_script({ language, code, inputs, outputSpec })` 提交腳本，`inputs` 使用資料集別名。執行者是 Privacy 端：main 的 `sandbox/*` 服務啟動沙箱行程，Agent 行程不直接接觸真實資料檔。
+5. **語言**：
+   - **託管 Python**：首次啟用 compute-to-data 時，以 `uv` 在 `<userData>/runtimes/python` 建立固定版本的 Python 與預裝套件（pandas、numpy、openpyxl、pyarrow、matplotlib）。這是首選語言。
+   - **JavaScript**：使用 Electron 內建 Node（`ELECTRON_RUN_AS_NODE=1`），永遠可用。
+   - 不開放 shell。沙箱內斷網，執行時不能安裝套件；缺少的套件回報為錯誤，由 Operator 改寫腳本。
+6. **沙箱（參考 Codex 的 OS 原生沙箱）**：以 OS 機制包裝整個腳本行程，而不是限制語言：
+   - macOS：Seatbelt（`sandbox-exec` 設定檔）；
+   - Linux：bubblewrap + Landlock + seccomp；
+   - Windows：restricted token + ACL（參照 Codex Windows sandbox 的做法）。
+
+   共同政策：
+   - 輸入檔複製到 `<userData>/sandbox-runs/<runId>/in`，唯讀；
+   - 只能寫入 `<runId>/out`；
+   - 無網路；
+   - 清空環境變數，HOME 指向 run 目錄；
+   - 預設 CPU 時間 120 秒、記憶體 2 GB、輸出總量 50 MB，可在設定調整。
+7. **降級**：啟動時對 native 沙箱做自我檢查，例如 Linux 未安裝 bwrap 或 user namespace 被停用時，改用 **Pyodide（WASM Python）** 執行：它天生無網路，只掛載 in／out 目錄，時間與記憶體受 worker 限制。降級期間只接受 Python 腳本，JavaScript 腳本回報錯誤並請 Operator 改寫。設定頁顯示目前的沙箱後端與補裝說明。
+8. **靜態檢查**（執行前，由程式碼強制，非 LLM）：
+   - Python 以 AST 檢查 import 白名單（在沙箱內先跑檢查器）；
+   - JavaScript 以 acorn 檢查，禁止 `child_process`、`net`、`http(s)`、`dgram`、`worker_threads`、`vm`、動態 `import()`／`require` 字串拼接。
+   不通過就不執行，回報原因給提交者。
+9. **不需人工審核**：隔離由沙箱與靜態檢查在程式碼層強制，因此預設自動執行；腳本全文記入 Ledger 與 `sandbox_runs`，可事後檢視。例外：腳本輸出要**寫回使用者原始檔案**時（預設只寫到 `out`，另存到 workdir），屬 `high` 風險，強制人工確認（[ADR-0010](0010-hitl-and-risk-levels.md)）。
+
+### 結果去向
+
+10. **預設給使用者**：Privacy Agent 讀取 `out`，以本地模型或模板組成回覆，還原別名後呈現；圖表或檔案作為附件。
+11. **回給 Operator 需經 Gate**：任務需要 Operator 繼續推理時（例如依統計結果寫報告、依錯誤修正腳本），`out` 的內容與 stderr 都經過 Gate，並套用：
+    - **列數上限**：預設 50 列，超過就只給使用者，Operator 只收到結構摘要；
+    - **小格抑制**：`outputSpec` 宣告為彙總表時，計數小於 k（預設 5）的分組以 `<k` 取代；
+    - Traceback 同樣經 Gate，錯誤訊息中常會帶出資料值。
+12. 失敗重試由 Operator 主導，每個 Task 預設最多 5 次，超過則轉 `failed`。
+
+## 程式結構
+
+- `packages/privacy/dataset`：解析器、`DatasetDescriptor`、合成樣本。
+- `packages/sandbox`（純 Node，不依賴 Electron）：`SandboxRunner` 介面與後端 `seatbelt`、`linux-bwrap`、`windows-restricted`、`pyodide`；`runtimes/`（uv 託管 Python、Electron Node 路徑解析）；`static-check/`。後端自我檢查與選擇在 `selectBackend()`。
+- `apps/desktop/src/main/sandbox/`：`sandbox/*` 服務、run 目錄管理與 `sandbox_runs` 落庫。
+
+## 考慮過的替代方案
+
+- **只用 Pyodide**：跨平台一致，但效能與套件受限；改為 native 沙箱的降級選項。
+- **完全照 Codex：任何直譯器 + shell**：執行環境因人而異、攻擊面大，一般使用者的電腦也多半沒裝 Python。
+- **Docker／VM**：隔離最強，但要求使用者安裝。
+- **每次人工審核腳本**：多數使用者看不懂腳本，審核流於形式。
+- **本地模型審查腳本**：SLM 審程式碼不可靠，只會給人虛假的安全感。
+
+## 後果
+
+- 三個平台各一套 native 沙箱，需要在 CI 各自跑逃逸測試（[ADR-0014](0014-testing-ci-packaging.md)）；Windows 後端參考 Codex，實作成本最高。
+- 託管 Python 首次啟用需要下載（約百 MB 等級），設定頁要有進度與離線說明。
+- 合成樣本讓 Operator 能寫出正確腳本，但對格式特殊的資料仍可能多輪重試。
+
+## 關聯
+
+[ADR-0005](0005-privacy-agent-and-task-dispatch.md) Privacy Agent、[ADR-0015](0015-privacy-gate-aliasing-and-vault.md) Gate、[ADR-0016](0016-privacy-policy-ledger-and-transparency.md) 政策。

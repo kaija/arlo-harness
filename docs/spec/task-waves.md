@@ -1,6 +1,6 @@
 # ADR 實作任務與 Waves
 
-建立日期：2026-09-16。依據 [ADR 索引](README.md) 與 ADR-0001～0014。
+建立日期：2026-09-16。依據 [ADR 索引](README.md) 與 ADR-0001～0014。2026-09-25 架構修訂（Privacy Agent + Operator，ADR-0015～0018）的影響見「[2026-09-25 架構修訂](#2026-09-25-架構修訂)」一節；下方原任務表中的 Orchestrator／Persona 用語保留當時的寫法，對應關係以該節為準。
 
 這是開發工作的相依排程，不是 ADR-0005 所排除的產品內 DAG planner；不修改既有 Accepted 決策。Task 編號為本文件新建，並非原 ADR 已有的編號。
 
@@ -99,6 +99,56 @@ ADR 欄以四位數對應 `adr/` 中同號文件。P1／P2／P3 沿用 ADR 的�
 - **T25：人工驗證的界線。** 測試身份回答可以證明協定與狀態機；不能取代 T27 的真實登入／captcha 操作，也不能把尚未授權的人工作業自動批准。
 
 本文件僅建立開發 backlog，沒有建立 Codex 新 tasks、排程、自動執行或修改產品功能。
+
+## 2026-09-25 架構修訂
+
+ADR 就地改寫為 Privacy Agent + Operator 架構（見 [README 盤問決策](README.md#2026-09-25-盤問決策)）。用語對應：Orchestrator → Privacy Agent（LLM 模式）或 Planner（SLM 模式的雲端規劃者）；Persona Agent → Operator（仍由 Persona workspace 定義）。
+
+### 已完成任務的重工
+
+| Task | 重工內容 | ADR |
+|---|---|---|
+| T02 | `AgentId` 改為 `'privacy' \| 'planner' \| 'operator:<personaId>'`，保留 id 改為 `privacy`、`planner`；`system:webhook`；`ask_orchestrator` 改名為 `ask_delegator`；`InterruptResponder` 改為 `'delegator' \| 'user'`；`InterruptPayload` 新增 `privacy_confirm` 並列為強制人工；`ProviderProfile` 新增 `trustZone`、`structuredOutput`；風險表新增 `submit_compute_script`（low）與沙箱寫回原檔（high） | 0003、0004、0010、0015 |
+| T04 | 全域設定新增 `privacy`（mode、modelBinding、preset、categoryOverrides、customTerms、compute）與 `planner.modelBinding`；`orchestrator.modelBinding` 移除；persona.yaml 新增 `tools.egress`、`computerUse`（P2）；Agent Card URL 改為 `arlo://agents/operator:<id>` | 0003、0008 |
+| T05 | broker 路由政策改為 ADR-0004 第 5 點的表；移除 Operator 送出的 `arlo.privacyScope`／`arlo.targetOperator` metadata，並驗證 scope 屬於該 Task 樹 | 0004 |
+| T06 | 新 migration：`privacy_vault`、`privacy_ledger`、`sandbox_runs`；`threads.source` 增加 `privacy`、`planner`、`webhook` | 0011 |
+| T07 | `createModelProvider` 對 `trustZone === 'cloud'` 回傳 `GuardedModel`（Gate 由 T35 接入，先留介面）；`FakeModel` 支援宣告 trustZone 並記錄收到的請求 | 0003、0014 |
+| T16 | 委派 runtime 改為 Planner 與 LLM Flow 共用（`agent-runtime/src/roles/planner`），委派訊息帶 `arlo.privacyScope`；Operator 內建工具改名為 `ask_delegator` | 0005 |
+| T26／T27 | UI 改名；主視窗改為 Privacy Agent 對話，加入隱私狀態列、隱私卡片與 Ledger 面板；Action Center 新增第六種確認 `privacy_confirm` | 0007、0010、0016 |
+
+### 新任務
+
+| Task | 任務與交付範圍 | ADR | 階段／環境 | 直接前置 | 完成驗收重點 |
+|---|---|---|---|---|---|
+| T32 | 隱私契約與設定：T02／T04 的重工，加上政策類別表、預設等級、`privacy_confirm`、Ledger 紀錄型別 | 0003、0004、0010、0016 | P1／N | T02、T04 | 類別與三段預設以測試鎖定；`credential` 不可覆寫；trustZone 推導（loopback、RFC1918、Tailscale、`*.local`）有測試 |
+| T33 | `packages/privacy` 核心：規則層偵測器、語意層請求 schema、別名編碼、保留指令、回應驗證與修復、egress 網域集合、dataset schema 抽取與合成樣本 | 0015、0016、0017 | P1／N | T32 | 繁中與英文語料的命中與不命中；別名改寫的修復與拒絕；解析器不外洩真值 |
+| T34 | Vault 與 Ledger 服務：main 的 `privacy/vault.*`、`privacy/ledger.*`，safeStorage 加密、scope 授權、保留期 | 0011、0015、0016 | P1／E | T06、T09、T32 | 不同 scope 互不可見；Operator 無法還原非授權 scope；重啟後可還原 |
+| T35 | Gate 接入 agent-runtime：`GuardedModel`、hash 快取、fail-closed、工具邊界還原與新網域外送判斷 | 0003、0015 | P1／N | T07、T33、T34（契約） | 以 FakeModel 驗證雲端請求不含原值；偵測器離線時請求被擋並產生 `privacy_confirm` |
+| T36 | `packages/sandbox`：Seatbelt、bwrap + Landlock + seccomp、Windows restricted token、Pyodide 後端；`selectBackend` 自我檢查；uv 託管 Python、Electron Node；靜態檢查 | 0017 | P1／E | T32 | 三平台 CI 逃逸測試全數失敗；降級到 Pyodide 的路徑可測；逾時與記憶體上限生效 |
+| T37 | Compute-to-data：`submit_compute_script` 工具、main `sandbox/*` 服務與 run 目錄、輸出去向（給使用者／經 Gate 回 Operator、列數上限、小格抑制） | 0017 | P1／E | T33、T35、T36 | 以 CSV／XLSX／SQLite 範例驗證 Operator 只看到 schema 與合成樣本；寫回原檔需要 high 審批 |
+| T38 | Privacy Agent SLM Flow：狀態機、JSON schema 限制輸出、R0–R4、Compose 與隱私卡片資料 | 0005 | P1／N | T16、T35、T37 | FakeModel 扮演 SLM 與雲端 Planner，端到端 canary 測試；輸出不符 schema 時走 R4 |
+| T39 | Privacy Agent LLM Flow：route 工具、自由規劃、Ledger 紀錄 route 選擇 | 0005 | P1／N | T16、T35、T37 | 同 T38 的 canary 測試；不暴露原始 `delegate_to_*` |
+| T40 | 模式切換與 Planner 行程管理：`privacy.mode` 手動切換、Planner 啟停、入口改由 Privacy Agent 接收 | 0002、0005 | P1／E | T14、T38、T39 | 切換時進行中的任務以原模式完成；LLM 模式下 Planner 不存在 |
+| T41 | 圖片遮罩：tesseract.js OCR、偵測、塗黑與別名標籤，接入 Gate 與 `browser_screenshot` | 0006、0015 | P1／E | T15、T35 | 截圖中的 canary 文字不出現在雲端請求中；座標不變；OCR 不可用時 fail-closed |
+| T42 | 隱私 UI：首次啟動精靈（偵測本地端點、選模式與預設等級）、隱私設定、隱私卡片、Ledger 面板、`privacy_confirm` 回答、雲端 Privacy Agent 警告 | 0003、0007、0016 | P1／U | T20、T26、T27、T34 | 使用者可看到原文與送出內容的對照；只有高敏感類別會打斷 |
+| T43 | 隱私整合驗收：真 Electron + FakeModel，涵蓋兩種 Flow 的派發、別名、compute-to-data、新網域外送確認、偵測器離線 | 0014、0015 | P1／E | T25、T38、T39、T40、T41 | 所有 canary 位置（輸入、附件、工具輸出、snapshot、截圖、stderr）都不外洩 |
+| T44 | Computer use：macOS 權限流程、App 白名單與截圖遮罩、`computer_*` 工具、獨佔鎖與接管偵測 | 0018 | P2／E＋U | T18、T41 | 白名單外視窗塗黑；使用者移動滑鼠即暫停；輸入真值套用新網域規則 |
+
+### Wave 安排
+
+隱私核心不依賴正式 UI，可與既有 wave 並行：
+
+```text
+wave4 追加:  [T32]            （與 T09–T13 並行；T02／T04／T05／T06／T07 重工隨 T32 一起做）
+wave5 追加:  [T33, T34, T36]
+wave6 追加:  [T35, T37]
+wave7 追加:  [T38, T39, T41]  （T38／T39 需 T16；T41 需 T15）
+wave8 追加:  [T40, T42]
+wave9 追加:  [T43]
+Phase 2:     [T44]
+```
+
+T25 的 Phase 1 無 UI 驗收改為以 Privacy Agent 為入口；T43 是其隱私延伸。T21／T22／T23 的觸發改送 Privacy Agent，需等 T40 完成入口改線。
 
 ## 進度追蹤
 
