@@ -21,7 +21,7 @@
 5. **多 tab**：一個 Operator 視窗可含多個 `WebContentsView`（tab），共用同一 partition。`maxConcurrency > 1` 時每個 Run 開自己的 tab，但 cookie / storage 仍共用，Persona 設定文件需明示此限制。
 6. **隱私**（[ADR-0015](0015-privacy-gate-aliasing-and-vault.md)）：
    - `browser_snapshot`、`browser_extract`、`browser_screenshot` 的輸出以真值留在本機歷程，Operator 綁雲端模型時，由 Gate 在送出前別名化；截圖走 Gate 的 OCR 塗黑。
-   - `browser_navigate`（URL）、`browser_type`、`browser_click` 屬外送型工具：參數中的別名在執行前還原，若還原值會送往本 Task 未出現過的網域，則以 `privacy_confirm` 中斷。工具每次導航都把網域加入 Task 網域集合。
+   - `browser_navigate`（URL）、`browser_type`、`browser_click` 屬外送型工具：參數中的別名在執行前還原，若還原值會送往不在可信網域集合內的網域，則以 `privacy_confirm` 中斷。導航本身不會讓網域變成可信：可信網域只來自使用者輸入、使用者核准與全域信任清單。
    - `browser_evaluate` 的 JS 字串同樣會還原別名，因此維持 `high`。
 7. **Skill 可直接用 Playwright**：Persona 的 TS tool 模組可透過 agent-runtime 提供的 `getPage()` 取得 Playwright `Page`，撰寫自訂自動化。
 

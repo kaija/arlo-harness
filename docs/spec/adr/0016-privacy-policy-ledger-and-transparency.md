@@ -2,6 +2,7 @@
 
 - 狀態：Accepted
 - 日期：2026-09-25
+- 修訂：2026-09-26：新增隱私設定包（設計缺口盤問 5）
 - 適用階段：Phase 1
 
 ## 背景
@@ -36,24 +37,42 @@
 3. `credential` 在任何預設下都是 `block`，而且不可覆寫。其他類別進階使用者可以逐類覆寫，覆寫存在全域設定 `privacy.categoryOverrides`，變更寫入 Ledger。
 4. 使用者可以新增自訂詞彙（例如公司名、專案代號），指定類別與動作；比對屬於規則層，大小寫不敏感。
 
+### 隱私設定包
+
+5. **隱私設定包**（policy pack）是可匯入、匯出的 YAML 檔（`kind: arlo.privacy-pack/v1`），內容包括：
+   - 預設等級、類別覆寫；
+   - 自訂詞彙：支援字面值與 regex，例如病歷號、案件代號格式；
+   - 信任網域（[ADR-0015](0015-privacy-gate-aliasing-and-vault.md) 第 17 點）；
+   - Operator 範本：Persona workspace 的樣板，不含金鑰。
+6. **內建兩包**：
+   - 「醫療」：`person`、`health` 為 confirm；病歷號、健保卡號規則；醫學文獻研究員、資料整理員、文書助理範本。
+   - 「法律」：`person`、`org_confidential` 為 confirm；案號格式規則；法律研究員、合約審閱員、書狀撰寫員範本。
+
+   首次啟動精靈可以選擇套用。
+7. **匯入規則**：
+   - 匯入前以差異檢視列出每項變更，使用者確認後才套用，並寫入 Ledger。
+   - 設定包**只能讓政策變嚴或新增**：可以新增詞彙與信任網域、把類別動作改得更嚴；把動作改得更鬆的項目會被列出並預設不套用，需使用者逐項勾選。`credential` 永遠不可放鬆。
+   - 信任網域逐項列出，預設不勾選，因為加入信任網域等於放寬外送。
+   - v1 不做管理員鎖定：單機桌面 App 的鎖定容易被繞過，機構部署可在後續版本評估。
+
 ### Privacy Ledger
 
-5. 每一次跨出信任區的外送都寫入 main SQLite `privacy_ledger`：時間、`scopeId`、`taskId`、發出的 Agent、目的 Provider 與 `trustZone`、route、各類別命中數、別名化後實際送出的內容（或其 blob 參照）、還原事件（別名、目的網域、是否經人工核准）、使用者授權（規則層降級、新網域、`private` 標記）。
-6. 原文不另存於 Ledger：原文就在本機 `messages` 中，Ledger 以參照對照顯示。
-7. 保留期與 `trace_spans` 相同（預設 90 天，可調）。Ledger 可匯出，方便使用者或公司稽核。
+8. 每一次跨出信任區的外送都寫入 main SQLite `privacy_ledger`：時間、`scopeId`、`taskId`、發出的 Agent、目的 Provider 與 `trustZone`、route、各類別命中數、別名化後實際送出的內容（或其 blob 參照）、還原事件（別名、目的網域、是否經人工核准）、使用者授權（規則層降級、新網域、`private` 標記）。
+9. 原文不另存於 Ledger：原文就在本機 `messages` 中，Ledger 以參照對照顯示。
+10. 保留期與 `trace_spans` 相同（預設 90 天，可調）。Ledger 可匯出，方便使用者或公司稽核。
 
 ### 使用者看得到什麼
 
-8. **隱私卡片**：Privacy Agent 對話中，每個任務顯示一張可展開的卡片，內容包括所選 route、送到哪個 Provider、各類別處理數量，以及「原文與送出內容對照」（別名以色塊標示，滑過可看真值，真值只在本機 renderer 還原）。
-9. **只在高敏感時確認**：只有下列情況以 `privacy_confirm` 中斷請使用者確認（強制人工，見 [ADR-0010](0010-hitl-and-risk-levels.md)）：
+11. **隱私卡片**：Privacy Agent 對話中，每個任務顯示一張可展開的卡片，內容包括所選 route、送到哪個 Provider、各類別處理數量，以及「原文與送出內容對照」（別名以色塊標示，滑過可看真值，真值只在本機 renderer 還原）。
+12. **只在高敏感時確認**：只有下列情況以 `privacy_confirm` 中斷請使用者確認（強制人工，見 [ADR-0010](0010-hitl-and-risk-levels.md)）：
    - 命中 `confirm` 類別；
    - SLM Flow 對 route 的判斷不確定（[ADR-0005](0005-privacy-agent-and-task-dispatch.md)）；
    - 偵測器離線；
-   - 還原值要送往新網域。
+   - 還原值要送往不在可信網域集合內的網域（使用者輸入、使用者核准、全域信任清單以外）。
 
    其他情況自動處理，只留紀錄。確認卡片顯示的是別名化後即將送出的內容，使用者可以選「允許」「改為純本地處理」或「取消」。
-10. **Ledger 面板**：主視窗提供時間軸檢視，可依任務、Provider、類別篩選。
-11. **狀態提示**：主視窗常駐顯示目前的 Privacy 模式（SLM／LLM）、預設等級、Privacy Agent 的 trustZone。Privacy Agent 綁雲端時，以警告色常駐顯示。
+13. **Ledger 面板**：主視窗提供時間軸檢視，可依任務、Provider、類別篩選。
+14. **狀態提示**：主視窗常駐顯示目前的 Privacy 模式（SLM／LLM）、預設等級、Privacy Agent 的 trustZone。Privacy Agent 綁雲端時，以警告色常駐顯示。
 
 ## 考慮過的替代方案
 

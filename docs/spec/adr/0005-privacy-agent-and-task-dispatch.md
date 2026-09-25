@@ -3,6 +3,7 @@
 - 狀態：Accepted
 - 日期：2026-09-15
 - 修訂：2026-09-25：Orchestrator 改為 Privacy Agent，新增 SLM／LLM 兩種 Flow 與雲端 Planner（盤問第 1–9、16、22 題）
+- 修訂：2026-09-26：R1 分批、R3 本地 compute、案件 scope（設計缺口盤問 2b、3、4）
 - 適用階段：Phase 1
 
 ## 背景
@@ -33,10 +34,17 @@ OpenAI Agents SDK 的 handoff 是同行程概念，跨 utilityProcess 無法直�
    | Route | 名稱 | 做法 |
    |---|---|---|
    | R0 | 直通 | 沒有敏感資料，原樣交給規劃／執行者；仍經 Gate 作最後防線 |
-   | R1 | 最小化 + 別名化委派 | Privacy Agent 決定哪些敏感值必須送出；不需要的移除或泛化，需要的別名化，再委派；結果還原後回覆 |
+   | R1 | 最小化 + 別名化委派 | Privacy Agent 決定哪些敏感值必須送出；不需要的移除或泛化，需要的別名化，再委派；結果還原後回覆。大量非結構化內容以文件為單位**分批**委派 |
    | R2 | Compute-to-data | 只送 schema／合成樣本，Operator 寫腳本，本機沙箱執行（[ADR-0017](0017-compute-to-data-and-script-sandbox.md)） |
-   | R3 | 純本地 | Privacy Agent 自己處理（摘要、改寫、問答），不外送 |
+   | R3 | 純本地 | Privacy Agent 自己處理（摘要、改寫、問答），不外送；需要以敏感值為參數的計算走**本地 compute**（[ADR-0017](0017-compute-to-data-and-script-sandbox.md) 第 13 點） |
    | R4 | 詢問使用者 | 無法判斷或政策要求時以 `privacy_confirm` 中斷（[ADR-0010](0010-hitl-and-risk-levels.md)） |
+
+**R1 分批**：郵件匯出、多份文件、對話匯出等大量非結構化內容，以「一封郵件／一份文件／一段對話」為單位分批別名化並委派，全部批次共用同一個 privacy scope，所以別名前後一致。
+
+- 批次數超過門檻（預設 20）時，先以 `privacy_confirm` 說明批次數與預估成本，由使用者確認。
+- 各批結果由派發者（Planner 或 LLM Flow）彙整。
+
+**案件 scope**：使用者把 Thread 綁定到案件時，該 Thread 的所有 route 都使用 `case:<caseId>` scope（[ADR-0015](0015-privacy-gate-aliasing-and-vault.md) 第 18 點）。
 
 ### SLM Flow（`privacy.mode = 'slm'`）
 
@@ -47,7 +55,7 @@ OpenAI Agents SDK 的 handoff 是同行程概念，跨 utilityProcess 無法直�
    4. **Execute route**：
       - R0／R1：把最小化、別名化後的任務以 A2A 交給 **Planner**，由 Planner 拆解並派發給 Operator。
       - R2：Privacy Agent 抽 schema 後交給 Planner（或第 12 點指定的 Operator）撰寫腳本。
-      - R3：SLM 直接回答。
+      - R3：SLM 直接回答；需要以敏感值為參數的計算時，呼叫內建的確定性資料工具（`match_names`、`filter_rows` 等）。
       - R4：中斷並等待使用者。
    5. **Compose**：還原別名、組回覆、產生隱私卡片與 Ledger 紀錄（[ADR-0016](0016-privacy-policy-ledger-and-transparency.md)）。
 6. SLM 輸出不符 schema 時重試一次，仍失敗就走 R4（`reason: 'uncertain'`），不猜測。
@@ -58,6 +66,7 @@ OpenAI Agents SDK 的 handoff 是同行程概念，跨 utilityProcess 無法直�
 8. Privacy Agent **就是 Orchestrator**，在自己的 Run 內自由規劃，但資料外送只能透過明確的 **route 工具**，每次選擇都寫入 Ledger：
    - `delegate_minimized(operator, task, context?, keep: EntityRef[], mode, contextId?)`：R0／R1，`keep` 列出必須送出的敏感值，其餘由程式移除或泛化；
    - `compute_to_data(operator, datasets, question)`：R2；
+   - `compute_local(language, code, inputs, params, outputSpec)`：R3 的本地 compute，腳本由 Privacy Agent 撰寫、可帶真值參數，輸出不外送；
    - `ask_user_privacy(question, preview)`：R4；
    - 以及 `get_task(taskId)`、`cancel_task(taskId)`、`list_tasks()`。
 

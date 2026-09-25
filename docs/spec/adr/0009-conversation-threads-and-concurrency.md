@@ -3,6 +3,7 @@
 - 狀態：Accepted
 - 日期：2026-09-15
 - 修訂：2026-09-25：入口改為 Privacy Agent；Thread 與 privacy scope 的關係
+- 修訂：2026-09-26：可選的案件 scope
 - 適用階段：Phase 1
 
 ## 背景
@@ -19,6 +20,7 @@
 4. 面板左側列出 Thread（依最近活動排序，顯示來源標籤：user / privacy / planner / schedule / event / webhook），使用者可切換到任一 Thread 介入。
 5. Privacy Agent 的主對話是 `user:privacy`（主視窗），使用者也可以開新 Thread（`privacy:<uuid>`）；每個 async 委派完成事件注入發起的 Thread。Planner 的 Thread 由 Privacy Agent 建立，`contextId = planner:<privacy Thread contextId>`。
 6. **privacy scope**：Vault 別名在同一個 scope 內一致（[ADR-0015](0015-privacy-gate-aliasing-and-vault.md)）。Privacy Agent 的每條 Thread 各自是一個 scope，委派出去的 Planner／Operator Task Thread 繼承發起端的 scope；Operator 使用者 Thread 是自己的 scope。
+7. **案件**：使用者可以建立案件，並把 Privacy Agent 的 Thread 綁定到案件（一條 Thread 最多屬於一個案件）。綁定後，該 Thread 與其委派出去的 Thread 都使用 `case:<caseId>` scope。主視窗 Thread 列表可依案件分組；案件刪除時可選擇一併刪除所屬 Thread。
 
 ### 並行度
 

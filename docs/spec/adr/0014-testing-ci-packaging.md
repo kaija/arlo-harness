@@ -3,6 +3,7 @@
 - 狀態：Accepted
 - 日期：2026-09-15
 - 修訂：2026-09-25：新增隱私 canary 測試、偵測器語料、沙箱逃逸測試
+- 修訂：2026-09-26：網域規則、雲端腳本拒絕敏感參數、outputSpec 強制、設定包匯入的測試
 - 適用階段：Phase 1
 
 ## 背景
@@ -18,7 +19,9 @@
 3. **隱私測試**（安全邊界，任何變更必須通過）：
    - **偵測器語料**：`packages/privacy` 以繁中與英文語料鎖定規則層的命中與不命中，涵蓋身分證檢查碼、統一編號、卡號 Luhn、IBAN、電話格式、API key。
    - **Canary 測試**：在使用者輸入、附件、工具輸出、MCP 結果、瀏覽器 snapshot、截圖 OCR 文字、腳本 stderr 中植入 canary 值；分別以 SLM Flow 與 LLM Flow 跑完整任務，斷言扮演雲端的 `FakeModel` 收到的任何請求都不含 canary 原值，且最終回覆正確還原。
-   - **別名保真**：模擬雲端模型改寫別名（去括號、翻譯型別、全形），驗證修復或拒絕；驗證新網域外送觸發 `privacy_confirm`。
+   - **別名保真**：模擬雲端模型改寫別名（去括號、翻譯型別、全形），驗證修復或拒絕；驗證新網域外送觸發 `privacy_confirm`；Operator 先導航到某網域、再輸入還原值時仍觸發確認；全域信任網域只能經 renderer 修改。
+   - **雲端腳本邊界**：含別名或敏感字面值的 `submit_compute_script` 被拒；未宣告或不符 `outputSpec` 的輸出不回 Operator；`aggregate` 的小格抑制生效。
+   - **設定包**：放寬類別或加入信任網域的項目預設不套用；`credential` 無法被放寬。
    - **Fail-closed**：偵測器 Provider 離線、OCR 不可用時，雲端請求必須被擋。
    - **沙箱逃逸**：每個 native 後端與 Pyodide 在各自平台的 CI 上嘗試連網、讀取 in 以外的檔案、寫入 out 以外的位置、fork bomb、超時與超量記憶體，全部都必須失敗。
 4. **e2e**：Playwright 的 `_electron` 啟動 `apps/desktop`，覆蓋冒煙路徑：App 啟動、建立 Persona、Provider 設定（用 FakeModel 的 `apiType: 'fake'`，僅 test build 啟用）、在 Privacy Agent 輸入含個資的任務、看到隱私卡片與 Ledger 紀錄、派發到 Operator 並看到其視窗與 Thread 更新、`privacy_confirm` 與 HITL 升級到 Action Center 並回答。

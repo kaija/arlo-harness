@@ -2,6 +2,7 @@
 
 - 狀態：Accepted
 - 日期：2026-09-25
+- 修訂：2026-09-26：網域集合不再因導航自動加入；新增全域信任網域；新增可選的案件 scope（設計缺口盤問 1、1b、4）
 - 適用階段：Phase 1（圖片遮罩隨 T15 進 Phase 1；桌面截圖屬 Phase 2，見 [ADR-0018](0018-computer-use.md)）
 
 ## 背景
@@ -55,9 +56,15 @@
 ### 5. 還原與外送規則
 
 16. 還原發生在**本機工具邊界**：Operator 的工具參數含別名時，在工具執行前向 Vault 還原真值。工具輸出以真值進入本機歷程（SQLite `messages`），下一次送往雲端時由 Gate 重新別名化。雲端模型永遠只看到別名；本機歷程與 UI 顯示真值。
-17. **預設允許還原**（填表、寫本機檔、在同一網域操作都不打擾），唯一例外是「外送型參數」：還原後的值會被送往**本 Task 尚未出現過的網域**時，改為 `privacy_confirm`（`reason: 'new_domain_egress'`，強制人工，見 [ADR-0010](0010-hitl-and-risk-levels.md)）。
+17. **預設允許還原**（填表、寫本機檔、在同一網域操作都不打擾），唯一例外是「外送型參數」：還原後的值會被送往**不在本 Task 可信網域集合內的網域**時，改為 `privacy_confirm`（`reason: 'new_domain_egress'`，強制人工，見 [ADR-0010](0010-hitl-and-risk-levels.md)）。
     - 外送型工具：`browser_navigate` 的 URL、`browser_type`／`browser_click` 所在頁面的網域、MCP 與 skill 工具中標記為 `egress` 的參數，以及 [ADR-0018](0018-computer-use.md) 中會連網的桌面動作。
-    - Task 網域集合：Task 內使用者輸入提到的網域、Operator 已導航過的網域，以及使用者核准過的網域；集合存於該 Task 的 privacy scope。
+    - **Task 可信網域集合**只由使用者決定，包含三種來源：
+      - Task 內使用者輸入提到的網域；
+      - 使用者在本 Task 核准過的網域；
+      - 全域信任網域清單。
+      集合存於該 Task 的 privacy scope。
+    - **Operator 導航不會讓網域變成可信**。Operator 可以自由導航，導航 URL 本身若不含還原值就不需確認；但之後要把還原值送往該網域時，仍需確認。這堵住「prompt injection 先導航到惡意網域、再送出真值」的路徑。每個 Task 對每個新網域最多確認一次。
+    - **全域信任網域清單**（全域設定 `privacy.trustedDomains`）：由使用者在設定頁維護，或在確認卡片勾選「永遠信任此網域」加入，例如電子訴訟、健保申報系統。清單只能由 renderer 經使用者操作修改，Agent 沒有修改的 API；每次變更都寫入 Ledger。比對以可註冊網域（eTLD+1）加上使用者指定的子網域為準，不接受萬用字元的頂層網域。
     - 寄信、發訊息、付款本來就是 `high` 風險，仍依 ADR-0010 強制人工。
 
 ### 6. Vault
@@ -66,7 +73,11 @@
     - 使用者對 Privacy Agent 發起的每條 Thread 是一個 scope（`scopeId = contextId`）。
     - 委派出去的 Planner／Operator Task Thread **繼承**發起端的 scope（A2A message metadata `arlo.privacyScope`），別名在整個任務樹中才能一致。
     - 使用者直接在 Operator 使用者 Thread 介入時，使用該 Thread 自己的 scope（`user:<personaId>`）。
-19. 儲存：main SQLite `privacy_vault`，值以 `safeStorage` 加密；Agent 行程只能經 `privacy/vault.*` 服務，按自己被授權的 scope 別名化與還原（broker 依 port 與 Task 關聯驗證 scope）。保留期與 `messages` 相同（預設 90 天），Thread 刪除時一併刪除。
+    - **案件 scope（可選）**：使用者可以建立「案件」（例如一件訴訟、一位長期追蹤的病患），並把多條 Privacy Agent Thread 綁定到同一個案件。
+      - 綁定後，這些 Thread 以 `scopeId = case:<caseId>` 共用同一份別名表，跨次處理時 `⟦PERSON_4⟧` 仍指同一人。
+      - 預設仍以 Thread 為 scope。案件是明確的使用者選擇，因為它會讓雲端能跨任務拼湊同一案件的資訊；建立時的說明要講清楚這點。
+      - Thread 綁定案件前已產生的別名不會合併，綁定只影響之後的處理。
+19. 儲存：main SQLite `privacy_vault`，值以 `safeStorage` 加密；Agent 行程只能經 `privacy/vault.*` 服務，按自己被授權的 scope 別名化與還原（broker 依 port 與 Task 關聯驗證 scope）。保留期與 `messages` 相同（預設 90 天），Thread 刪除時一併刪除；案件 scope 的 Vault 以案件最後活動時間計算保留期，案件刪除時一併刪除。
 
 ### 7. 圖片
 

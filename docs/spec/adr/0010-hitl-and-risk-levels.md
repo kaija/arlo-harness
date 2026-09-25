@@ -3,6 +3,7 @@
 - 狀態：Accepted
 - 日期：2026-09-15
 - 修訂：2026-09-25：代答者改為「派發者」；新增 `privacy_confirm` 中斷；沙箱寫回原檔為 high
+- 修訂：2026-09-26：`privacy_confirm` 新增 `trust_domain` 選項與 `batch_volume` 原因
 - 適用階段：Phase 1
 
 ## 背景
@@ -22,11 +23,11 @@ type InterruptPayload =
   | { type: 'captcha';       site: string; screenshotRef?: string }
   | { type: 'tool_error';    toolName: string; error: string; retryable: boolean }
   | { type: 'privacy_confirm';
-      reason: 'sensitive_category' | 'uncertain' | 'detector_unavailable' | 'new_domain_egress';
+      reason: 'sensitive_category' | 'uncertain' | 'detector_unavailable' | 'new_domain_egress' | 'batch_volume';
       categories: string[];            // 命中的政策類別（ADR-0016）
       preview: string;                 // 別名化後、即將送出的內容
       destination: { providerId?: string; domain?: string };
-      options: Array<'allow' | 'local_only' | 'rules_only' | 'cancel'> };
+      options: Array<'allow' | 'trust_domain' | 'local_only' | 'rules_only' | 'cancel'> };
 ```
 `tool_error` 不中斷等待，只是結構化回報並轉 `failed`（或由 Operator 自行重試）。`privacy_confirm` 由 Gate 或 Privacy Agent 產生（[ADR-0015](0015-privacy-gate-aliasing-and-vault.md)、[ADR-0016](0016-privacy-policy-ledger-and-transparency.md)），可能出現在 Privacy Agent、Planner 或 Operator 的 Task 上。
 
@@ -44,7 +45,7 @@ type InterruptPayload =
 **派發者**是發出該委派的 Agent：SLM 模式是 Planner（雲端，只看得到別名化內容），LLM 模式是 Privacy Agent。SLM 模式下 Privacy Agent 不代答，因為本地 SLM 不適合判斷工具審批。派發者的回答進入 Operator 時，同樣經過 Operator 的 Gate。
 
 1. **派發者先答**：派發者在同步等待或收到 async 事件時看到 `input-required`，若類型允許代答，就以委派時的原始任務脈絡回答（以 `message/send` 帶同 `taskId` 續傳）。判斷無法回答時，呼叫 `escalate_to_user(taskId)` 工具升級。
-2. **升級給使用者**：main 把中斷寫入 Action Center（severity 依類型），發系統 Toast；若 Operator 視窗隱藏，主視窗 Agent 列表顯示待處理徽章。使用者在 Operator 面板、Privacy Agent 對話或 Action Center 回答；`auth_required` / `captcha` 時使用者直接在該 Operator 視窗的瀏覽器完成操作後按「繼續」。`privacy_confirm` 的回答選項：`allow`（依別名化內容送出）、`local_only`（改走純本地 route）、`rules_only`（僅偵測器離線時出現，本任務只用規則層）、`cancel`。
+2. **升級給使用者**：main 把中斷寫入 Action Center（severity 依類型），發系統 Toast；若 Operator 視窗隱藏，主視窗 Agent 列表顯示待處理徽章。使用者在 Operator 面板、Privacy Agent 對話或 Action Center 回答；`auth_required` / `captcha` 時使用者直接在該 Operator 視窗的瀏覽器完成操作後按「繼續」。`privacy_confirm` 的回答選項：`allow`（依別名化內容送出）、`local_only`（改走純本地 route）、`rules_only`（僅偵測器離線時出現，本任務只用規則層）、`trust_domain`（僅 `new_domain_egress` 時出現，允許並把網域加入全域信任清單）、`cancel`。`batch_volume` 用於 R1 分批的批次數超過門檻時。
 3. **恢復執行**：Agent 行程以 SDK `RunState` 序列化保存中斷點（存 SQLite `run_states`），回答到達後 `RunState.approve/reject` 或注入回答，續跑。行程重啟後可從 `run_states` 還原。
 4. **逾時**：`input-required` 超過 24 小時無回應，Task 轉 `canceled`，通知派發者與 Action Center。
 

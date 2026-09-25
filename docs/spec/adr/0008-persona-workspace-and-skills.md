@@ -3,6 +3,7 @@
 - 狀態：Accepted
 - 日期：2026-09-15
 - 修訂：2026-09-25：Persona 定義 Operator；新增 `computerUse`、`delegation`、MCP／skill 工具的 `egress` 標記、全域 `privacy` 設定
+- 修訂：2026-09-26：全域 `privacy` 新增 `trustedDomains`、`packs`、`batch`
 - 適用階段：Phase 1
 
 ## 背景
@@ -69,7 +70,12 @@ privacy:
   modelBinding: { providerId: ollama-local, model: qwen3:8b }
   preset: balanced                 # strict | balanced | permissive（ADR-0016）
   categoryOverrides: { org_confidential: alias }
-  customTerms: [{ term: "Project Falcon", category: org_confidential }]
+  customTerms:
+    - { term: "Project Falcon", category: org_confidential }
+    - { pattern: "\\b\\d{8}\\b", label: 病歷號, category: health }   # regex
+  trustedDomains: [efiling.judicial.gov.tw]   # 只能由使用者在 UI 修改（ADR-0015）
+  packs: [legal]                   # 已套用的設定包，僅供顯示與重新套用（ADR-0016）
+  batch: { confirmAbove: 20 }      # R1 分批確認門檻（ADR-0005）
   compute:                         # ADR-0017
     timeoutSec: 120
     memoryMb: 2048

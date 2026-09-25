@@ -3,6 +3,7 @@
 - 狀態：Accepted
 - 日期：2026-09-15
 - 修訂：2026-09-25：新增 `privacy_vault`、`privacy_ledger`、`sandbox_runs`；OTLP 外送受 trustZone 限制
+- 修訂：2026-09-26：新增 `privacy_cases`
 - 適用階段：Phase 1
 
 ## 背景
@@ -15,9 +16,9 @@
 
 1. **main 持有單一 SQLite**（`better-sqlite3`，WAL 模式），路徑 `<userData>/arlo.db`。Migration 以 `drizzle-orm` + `drizzle-kit` 管理。
 2. **Agent 行程不碰 DB**。agent-runtime 的 `IpcSession`、`IpcTaskStore`、`IpcTraceExporter` 都透過 MessagePort 對 main 發 `db/*` 請求；main 落庫後把變更以 `state/*` 事件廣播給相關 renderer。
-3. 主要資料表：`personas`（yaml 快取與狀態）、`provider_profiles`、`secrets`、`threads`、`messages`、`run_states`、`a2a_tasks`、`delegations`、`schedules`、`schedule_runs`、`notifications`、`trace_spans`、`events`、`privacy_vault`、`privacy_ledger`、`sandbox_runs`。
+3. 主要資料表：`personas`（yaml 快取與狀態）、`provider_profiles`、`secrets`、`threads`、`messages`、`run_states`、`a2a_tasks`、`delegations`、`schedules`、`schedule_runs`、`notifications`、`trace_spans`、`events`、`privacy_vault`、`privacy_ledger`、`sandbox_runs`、`privacy_cases`。
    - `messages`、`run_states`、`trace_spans` 保存**本機真值**：別名化只發生在送往雲端的請求上（[ADR-0015](0015-privacy-gate-aliasing-and-vault.md)）。
-   - `privacy_vault` 以 `(scope_id, alias)` 為鍵，值以 `safeStorage` 加密；`privacy_ledger` 保存別名化後的外送內容與授權事件（[ADR-0016](0016-privacy-policy-ledger-and-transparency.md)）；`sandbox_runs` 保存腳本全文、後端、資源用量與結果摘要（[ADR-0017](0017-compute-to-data-and-script-sandbox.md)）。
+   - `privacy_cases` 保存案件名稱、建立時間與綁定的 Thread；`privacy_vault` 以 `(scope_id, alias)` 為鍵，值以 `safeStorage` 加密；`privacy_ledger` 保存別名化後的外送內容與授權事件（[ADR-0016](0016-privacy-policy-ledger-and-transparency.md)）；`sandbox_runs` 保存腳本全文、後端、資源用量與結果摘要（[ADR-0017](0017-compute-to-data-and-script-sandbox.md)）。
 4. persona.yaml 與 skills 以檔案系統為真相來源（[ADR-0008](0008-persona-workspace-and-skills.md)），DB 只存快取與執行狀態。
 
 ### 機密

@@ -2,6 +2,7 @@
 
 - 狀態：Accepted
 - 日期：2026-09-25
+- 修訂：2026-09-26：dataset 限表格格式；雲端腳本不得帶敏感參數，改由本地 compute；outputSpec 結構性強制（設計缺口盤問 2、2b、3、6）
 - 適用階段：Phase 1
 
 ## 背景
@@ -15,9 +16,9 @@
 ### 何時使用
 
 1. 觸發依**資料型態與政策類別**：
-   - 附件或引用的資料為 CSV、TSV、XLSX、JSON、JSONL、SQLite、log，或文字超過設定的列數門檻（預設 200 列）時，屬於 `dataset` 類別；
-   - 政策為 `schema_only` 的類別強制走此路徑（[ADR-0016](0016-privacy-policy-ledger-and-transparency.md)）；
-   - 非結構化短文字走別名化。
+   - `dataset` 類別**只涵蓋表格或紀錄格式**：CSV、TSV、XLSX、JSON、JSONL、SQLite、Parquet、每行一筆的 log。判定依確定性的格式解析，不看列數。
+   - 政策為 `schema_only` 的類別強制走此路徑（[ADR-0016](0016-privacy-policy-ledger-and-transparency.md)）。
+   - 非結構化內容（郵件匯出、Word／PDF 文件、對話匯出）不論多大，都走 R1 別名化；量大時分批處理，見 [ADR-0005](0005-privacy-agent-and-task-dispatch.md) 第 4 點。
    SLM Flow 以此規則決定；LLM Flow 以此為預設，可自行判斷改走其他 route，選擇寫入 Ledger。
 
 ### Schema 交付
@@ -31,7 +32,9 @@
 
 ### 腳本提交與執行
 
-4. Operator 或 Planner 以工具 `submit_compute_script({ language, code, inputs, outputSpec })` 提交腳本，`inputs` 使用資料集別名。執行者是 Privacy 端：main 的 `sandbox/*` 服務啟動沙箱行程，Agent 行程不直接接觸真實資料檔。
+4. Operator 或 Planner 以工具 `submit_compute_script({ language, code, inputs, outputSpec })` 提交腳本，`inputs` 使用資料集別名。
+   - **雲端撰寫的腳本不接受敏感參數**：`code` 與 `outputSpec` 若含 Vault 別名（`⟦TYPE_n⟧`），或 `code` 內嵌規則層會命中的字面值，提交即被拒絕並回報原因，不會在本機還原。
+   - 需要以敏感值為參數的計算（例如以新案件關係人姓名比對客戶資料庫），改走第 13 點的本地 compute。執行者是 Privacy 端：main 的 `sandbox/*` 服務啟動沙箱行程，Agent 行程不直接接觸真實資料檔。
 5. **語言**：
    - **託管 Python**：首次啟用 compute-to-data 時，以 `uv` 在 `<userData>/runtimes/python` 建立固定版本的 Python 與預裝套件（pandas、numpy、openpyxl、pyarrow、matplotlib）。這是首選語言。
    - **JavaScript**：使用 Electron 內建 Node（`ELECTRON_RUN_AS_NODE=1`），永遠可用。
@@ -59,13 +62,30 @@
 10. **預設給使用者**：Privacy Agent 讀取 `out`，以本地模型或模板組成回覆，還原別名後呈現；圖表或檔案作為附件。
 11. **回給 Operator 需經 Gate**：任務需要 Operator 繼續推理時（例如依統計結果寫報告、依錯誤修正腳本），`out` 的內容與 stderr 都經過 Gate，並套用：
     - **列數上限**：預設 50 列，超過就只給使用者，Operator 只收到結構摘要；
-    - **小格抑制**：`outputSpec` 宣告為彙總表時，計數小於 k（預設 5）的分組以 `<k` 取代；
+    - **只有宣告過的輸出能回 Operator**：`outputSpec` 逐檔宣告 `kind`：
+      - `aggregate`：必須標出計數欄位，小格抑制強制套用，計數小於 k（預設 5）的分組以 `<k` 取代；
+      - `rows`：受列數上限限制，逐值經 Gate；
+      - `chart`：圖檔經 Gate 的圖片處理。
+
+      未宣告的檔案，或內容不符宣告（例如宣告 `aggregate` 卻沒有計數欄、欄位型別不符）的檔案，一律只給使用者，Operator 只收到「某檔案未回傳，原因」。這是結構性的強制，不靠猜測哪一欄是計數；
     - Traceback 同樣經 Gate，錯誤訊息中常會帶出資料值。
 12. 失敗重試由 Operator 主導，每個 Task 預設最多 5 次，超過則轉 `failed`。
+
+### 本地 compute（R3 的子模式）
+
+13. 需要以真實敏感值為參數的計算，由 Privacy 端**自己**產生程式，全程不外送：
+    - **LLM Flow**：工具 `compute_local({ language, code, inputs, params, outputSpec })`，由 Privacy Agent 的模型撰寫腳本，`params` 可含真值。腳本在同一個沙箱中以同樣的政策執行，也做相同的靜態檢查。
+    - **SLM Flow**：本地 SLM 不寫任意程式，改呼叫內建的**確定性資料工具**（`packages/privacy/local-ops`）。工具以固定程式實作，參數由 SLM 以 JSON schema 填入：
+      - `match_names`：精確比對與模糊比對，涵蓋同音字、全半形、公司簡稱與常見後綴（股份有限公司、Inc.）、姓名順序；
+      - `filter_rows`、`count_by`、`join`、`dedupe`。
+      工具在同一沙箱中執行。
+    - 輸出只給使用者與 Privacy Agent，不經任何雲端 Agent；需要雲端後續處理時，照一般 route 由 Privacy Agent 重新決定（例如把彙總結果以 R1 交出）。
+    - 典型情境：利益衝突檢查、以病患名單篩選資料、以特定帳號過濾交易紀錄。
 
 ## 程式結構
 
 - `packages/privacy/dataset`：解析器、`DatasetDescriptor`、合成樣本。
+- `packages/privacy/local-ops`：SLM Flow 用的確定性資料工具（名稱比對、篩選、計數、join、去重）。
 - `packages/sandbox`（純 Node，不依賴 Electron）：`SandboxRunner` 介面與後端 `seatbelt`、`linux-bwrap`、`windows-restricted`、`pyodide`；`runtimes/`（uv 託管 Python、Electron Node 路徑解析）；`static-check/`。後端自我檢查與選擇在 `selectBackend()`。
 - `apps/desktop/src/main/sandbox/`：`sandbox/*` 服務、run 目錄管理與 `sandbox_runs` 落庫。
 
@@ -76,6 +96,8 @@
 - **Docker／VM**：隔離最強，但要求使用者安裝。
 - **每次人工審核腳本**：多數使用者看不懂腳本，審核流於形式。
 - **本地模型審查腳本**：SLM 審程式碼不可靠，只會給人虛假的安全感。
+- **雲端腳本的參數在沙箱前還原**：能力最完整，但會讓雲端撰寫的程式直接處理指定的敏感值；使用者選擇把這類計算留在本地。
+- **啟發式偵測計數欄位**：對 Operator 較寬鬆，但會漏判也會誤判；改為以 `outputSpec` 結構性強制。
 
 ## 後果
 

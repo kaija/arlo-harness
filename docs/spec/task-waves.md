@@ -150,6 +150,20 @@ Phase 2:     [T44]
 
 T25 的 Phase 1 無 UI 驗收改為以 Privacy Agent 為入口；T43 是其隱私延伸。T21／T22／T23 的觸發改送 Privacy Agent，需等 T40 完成入口改線。
 
+### 2026-09-26 設計缺口對任務的影響
+
+設計缺口盤問（README「2026-09-26 設計缺口盤問」）不新增任務，而是擴充以下任務的範圍與驗收：
+
+| Task | 追加範圍 | 追加驗收 |
+|---|---|---|
+| T32 | 設定 schema：`privacy.trustedDomains`、`packs`、`batch.confirmAbove`；`privacy_confirm` 新增 `trust_domain` 選項與 `batch_volume` 原因；設定包 `arlo.privacy-pack/v1` schema 與「只能變嚴」的合併規則 | 設定包放寬項目預設不套用；`credential` 無法放寬 |
+| T33 | egress 判斷改為「可信網域 = 使用者輸入 ∪ 使用者核准 ∪ 全域信任清單」，eTLD+1 比對；`packages/privacy/local-ops`（`match_names`、`filter_rows`、`count_by`、`join`、`dedupe`）；dataset 判定改為格式解析 | 先導航再輸入真值仍觸發確認；模糊比對語料（同音、全半形、公司後綴、姓名順序） |
+| T34 | `privacy_cases` 表與案件 scope（`case:<caseId>`）；全域信任清單只接受 renderer 修改並寫 Ledger | Agent 無法修改信任清單；案件刪除連帶刪除 Vault |
+| T37 | `submit_compute_script` 拒絕含別名或敏感字面值的腳本；`outputSpec` 結構性強制（`aggregate`、`rows`、`chart`）；`compute_local` 的沙箱執行路徑 | 未宣告或不符宣告的輸出不回 Operator；本地 compute 輸出不經雲端 Agent |
+| T38 | SLM Flow：R1 分批與 `batch_volume` 確認；R3 呼叫 local-ops | 200 份文件的 canary 分批測試；利益衝突比對不產生任何雲端請求 |
+| T39 | LLM Flow：`compute_local` 工具 | 同 T38 |
+| T42 | UI：信任網域管理、確認卡片的「永遠信任此網域」、案件建立與 Thread 綁定、設定包匯入差異檢視、首次啟動套用產業包 | 匯入時逐項勾選放寬項目 |
+
 ## 進度追蹤
 
 | Task | 狀態 | 已完成 | 缺口（延後至後續 task） |
