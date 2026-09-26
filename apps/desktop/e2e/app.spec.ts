@@ -1,7 +1,7 @@
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { _electron as electron, type ElectronApplication } from 'playwright';
+import { _electron as electron, type ElectronApplication, type Page } from 'playwright';
 import { expect, test } from '@playwright/test';
 
 const mainEntry = join(import.meta.dirname, '../out/main/index.js');
@@ -22,13 +22,31 @@ async function launch(): Promise<{ app: ElectronApplication; cleanup: () => Prom
   };
 }
 
+/**
+ * The Action center docks only in wide windows; on smaller screens (such as CI
+ * runners) the main window is narrower and it opens as a drawer instead.
+ */
+async function showActionCenter(main: Page) {
+  const panel = main.getByRole('complementary', { name: 'Action center' });
+  await expect(main.getByRole('navigation', { name: 'Agents' })).toBeVisible();
+  if (!(await panel.isVisible())) {
+    await main.getByRole('button', { name: /^(\d+ · 需要你處理|行動中心)$/ }).click();
+  }
+  return panel;
+}
+
+async function hideActionCenterDrawer(main: Page) {
+  const scrim = main.getByRole('button', { name: '關閉行動中心' });
+  if (await scrim.isVisible()) await scrim.click();
+}
+
 test('launches the main window with agents, chat and action center', async () => {
   const { app, cleanup } = await launch();
   try {
     const window = await app.firstWindow();
     await expect(window).toHaveTitle('Arlo Harness');
     await expect(window.getByRole('navigation', { name: 'Agents' })).toBeVisible();
-    await expect(window.getByRole('complementary', { name: 'Action center' })).toBeVisible();
+    await expect(await showActionCenter(window)).toBeVisible();
     await expect(window.getByText('Pinned · needs you')).toBeVisible();
   } finally {
     await cleanup();
@@ -65,11 +83,10 @@ test('opens a Persona window, hides it on close, and mirrors answers across wind
 
     // Approving in the main window resolves the same request in the Persona window.
     await expect(persona.getByText('Tool approval · 需要你批准')).toBeVisible();
-    await main
-      .getByRole('complementary', { name: 'Action center' })
-      .getByRole('button', { name: 'Allow', exact: true })
-      .click();
+    const actionCenter = await showActionCenter(main);
+    await actionCenter.getByRole('button', { name: 'Allow', exact: true }).click();
     await expect(persona.getByText('Approved · update_campaign_budget')).toBeVisible();
+    await hideActionCenterDrawer(main);
 
     // ADR-0007 §3: closing a Persona window hides it; opening again reuses it.
     const hidden = await app.evaluate(({ BrowserWindow }) => {

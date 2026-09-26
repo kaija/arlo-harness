@@ -14,11 +14,12 @@ const fixture = join(import.meta.dirname, 'fixtures/research-analyst');
 
 describe('workspace paths', () => {
   it('follows the ADR-0008 layout', () => {
+    const root = join('/data/personas', 'research-analyst');
     expect(personaWorkspacePaths('/data/personas', 'research-analyst')).toEqual({
-      root: '/data/personas/research-analyst',
-      configFile: '/data/personas/research-analyst/persona.yaml',
-      skillsDir: '/data/personas/research-analyst/skills',
-      workdir: '/data/personas/research-analyst/workdir',
+      root,
+      configFile: join(root, 'persona.yaml'),
+      skillsDir: join(root, 'skills'),
+      workdir: join(root, 'workdir'),
     });
   });
 
@@ -60,7 +61,7 @@ describe('loading a workspace', () => {
 
   it('loads every skill when persona.yaml omits the list, so a broken one fails', async () => {
     const yamlPath = join(root, 'persona.yaml');
-    const text = (await readFile(yamlPath, 'utf8')).replace(/^skills: .*\n/m, '');
+    const text = (await readFile(yamlPath, 'utf8')).replace(/^skills: .*\r?\n/m, '');
     await writeFile(yamlPath, text);
 
     const result = await loadPersonaWorkspace(root);
@@ -110,7 +111,7 @@ describe('loading a workspace', () => {
   it('treats a workspace without skills/ as having no skills', async () => {
     await rm(join(root, 'skills'), { recursive: true });
     const yamlPath = join(root, 'persona.yaml');
-    await writeFile(yamlPath, (await readFile(yamlPath, 'utf8')).replace(/^skills: .*\n/m, ''));
+    await writeFile(yamlPath, (await readFile(yamlPath, 'utf8')).replace(/^skills: .*\r?\n/m, ''));
 
     const result = await loadPersonaWorkspace(root);
 

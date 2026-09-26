@@ -5,11 +5,18 @@ import { AgentAvatar } from '../../components/agent-avatar.js';
 import { Icon } from '../../components/icon.js';
 import { StatusDot } from '../../components/status-dot.js';
 import { Button } from '../../components/ui/button.js';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '../../components/ui/dropdown-menu.js';
 import { Segmented } from '../../components/ui/segmented.js';
 import { Tooltip } from '../../components/ui/tooltip.js';
 import { WindowTitleBar } from '../../components/window-title-bar.js';
 import { showPersonaWindow } from '../../lib/bridge.js';
 import { useNow, useWindowWidth } from '../../lib/hooks.js';
+import { useTheme } from '../../lib/theme.js';
 import { cn } from '../../lib/utils.js';
 import { useTranslation } from '../../i18n.js';
 import {
@@ -50,6 +57,7 @@ export function MainWindow() {
   const [filter, setFilter] = useState<AgentFilter>('all');
   const [query, setQuery] = useState('');
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [theme, setTheme] = useTheme();
 
   const requested: AgentId =
     search.agent && search.agent !== ORCHESTRATOR_ID ? agentIdOf(search.agent) : ORCHESTRATOR_ID;
@@ -188,6 +196,35 @@ export function MainWindow() {
     <div className="flex h-full flex-col bg-background">
       <WindowTitleBar title="Arlo Harness">
         <span className="font-mono text-caption text-faint">local · 127.0.0.1</span>
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            aria-label={t('settings.appearance')}
+            title={t('settings.appearance')}
+            className="flex text-faint transition-colors duration-150 hover:text-foreground"
+          >
+            <Icon
+              name={theme === 'system' ? 'monitor' : theme === 'dark' ? 'moon' : 'sun'}
+              size={14}
+            />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent>
+            <DropdownMenuItem onSelect={() => setTheme('light')}>
+              <Icon name="sun" size={14} />
+              <span className="flex-1">{t('settings.light')}</span>
+              {theme === 'light' ? <Icon name="check" size={14} /> : null}
+            </DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => setTheme('dark')}>
+              <Icon name="moon" size={14} />
+              <span className="flex-1">{t('settings.dark')}</span>
+              {theme === 'dark' ? <Icon name="check" size={14} /> : null}
+            </DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => setTheme('system')}>
+              <Icon name="monitor" size={14} />
+              <span className="flex-1">{t('settings.system')}</span>
+              {theme === 'system' ? <Icon name="check" size={14} /> : null}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
         <Tooltip content={t('main.globalSettings')} side="bottom">
           <button
             type="button"

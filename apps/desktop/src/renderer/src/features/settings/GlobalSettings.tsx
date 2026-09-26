@@ -13,6 +13,7 @@ import { Input, NativeSelect, Textarea } from '../../components/ui/input.js';
 import { Switch } from '../../components/ui/switch.js';
 import { formatClock, renderTemplate } from '../../lib/format.js';
 import { useNow } from '../../lib/hooks.js';
+import { useTheme } from '../../lib/theme.js';
 import { cn } from '../../lib/utils.js';
 import { LOCALES, useLocaleSelection, useTranslation } from '../../i18n.js';
 import type { PersonaPatch } from '../../state/commands.js';
@@ -768,6 +769,7 @@ function AdvancedSection({ data }: { data: PlatformState }) {
   const advanced = data.advanced;
   const { locale, t } = useTranslation();
   const setLocale = useLocaleSelection();
+  const [theme, setTheme] = useTheme();
   const row = (label: string, value: string) => (
     <div className="flex items-center gap-3 border-b border-border py-2 last:border-b-0">
       <span className="flex-1 text-caption text-muted-foreground">{label}</span>
@@ -788,6 +790,18 @@ function AdvancedSection({ data }: { data: PlatformState }) {
                 {option.label}
               </option>
             ))}
+          </NativeSelect>
+        </Field>
+      </SettingsCard>
+      <SettingsCard title={t('settings.appearance')}>
+        <Field label={t('settings.colorScheme')} hint={t('settings.appearanceDescription')}>
+          <NativeSelect
+            value={theme}
+            onChange={(event) => setTheme(event.target.value as typeof theme)}
+          >
+            <option value="light">{t('settings.light')}</option>
+            <option value="dark">{t('settings.dark')}</option>
+            <option value="system">{t('settings.system')}</option>
           </NativeSelect>
         </Field>
       </SettingsCard>
