@@ -43,6 +43,7 @@ packages/a2a-transport/       A2A JSON-RPC over MessagePort, broker
 packages/agent-runtime/       Model providers, Agent runner, FakeModel
 packages/browser-tools/       Browser automation tools (placeholder)
 docs/spec/                    Accepted architecture decisions and task waves
+docs/reference-products/      Analyses of comparable open-source products (design references)
 ```
 
 Implementation progress is tracked in [docs/spec/task-waves.md](docs/spec/task-waves.md).
